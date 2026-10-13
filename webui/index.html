@@ -271,7 +271,7 @@ select:focus { border-color: var(--accent); }
 
 .col-left, .col-right { min-width: 0; }
 
-/* ---------------- 左栏：分区导航 ---------------- */
+/* ---------------- 左栏：竖排分区导航 ---------------- */
 
 .col-left {
   display: flex;
@@ -279,13 +279,23 @@ select:focus { border-color: var(--accent); }
   gap: 12px;
 }
 
+/* 左栏内部：左边竖排导航，右边内容区 */
+.left-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-width: 0;
+}
+
 .side-nav {
+  flex: none;
+  width: 158px;
   position: sticky;
   top: 0;
   z-index: 5;
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  flex-direction: column;
+  gap: 2px;
   padding: 8px;
   background: var(--panel);
   border: 1px solid var(--line);
@@ -293,40 +303,54 @@ select:focus { border-color: var(--accent); }
 }
 
 .nav-item {
-  display: inline-flex;
+  display: flex;
+  width: 100%;
   align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
-  border: 1px solid transparent;
-  border-radius: 6px;
-  background: #f7f8f8;
+  justify-content: flex-start;
+  gap: 9px;
+  padding: 9px 10px;
+  border: none;
+  border-radius: 8px;
+  background: none;
   color: var(--text-2);
   font-family: inherit;
-  font-size: 12.5px;
+  font-size: 13.5px;
   line-height: 1.4;
+  text-align: left;
   white-space: nowrap;
   cursor: pointer;
-  transition: background .12s, color .12s, border-color .12s;
+  transition: background .12s, color .12s;
 }
-.nav-item:hover { background: #eef1f1; color: var(--text); }
+.nav-item:hover { background: var(--bg); color: var(--text); }
+/* 选中态：主题色底 + 主题色文字 + 加粗 + 左侧 3px 竖条（inset 不影响布局） */
 .nav-item.active {
   background: var(--accent-soft);
-  border-color: var(--accent-line);
   color: var(--accent);
   font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.nav-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+.nav-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 /* 只在「连接」上挂状态点：未连接时显示，已连接时藏起来 */
 .nav-dot {
   flex: none;
+  margin-left: auto;
   width: 6px;
   height: 6px;
   border-radius: 50%;
   background: var(--danger);
 }
 
-.panel-area, .panel { min-width: 0; }
+.panel-area { flex: 1; min-width: 0; }
+.panel { min-width: 0; }
 
 /* ---------------- 卡片 ---------------- */
 
@@ -1120,12 +1144,22 @@ select:focus { border-color: var(--accent); }
 
 /* ---------------- 窄屏 ---------------- */
 
-@media (max-width: 1000px) {
+@media (max-width: 1100px) {
   .layout { grid-template-columns: minmax(0, 1fr); }
   .log-panel { position: static; height: 62vh; }
   .log-name { max-width: 96px; }
-  /* 窄屏：导航收成一条可横向滚动的条，不要竖排占满一屏 */
-  .side-nav { flex-wrap: nowrap; overflow-x: auto; }
+  /* 窄屏：导航从竖排栏回到内容上方的横向可滚动条，不占满一屏 */
+  .left-body { flex-direction: column; align-items: stretch; }
+  .side-nav {
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: auto;
+    gap: 6px;
+    overflow-x: auto;
+    position: static;
+  }
+  .nav-item { width: auto; }
+  .panel-area { flex: none; width: 100%; }
 }
 
 @media (max-width: 520px) {
@@ -1196,15 +1230,40 @@ select:focus { border-color: var(--accent); }
         分区导航：只切显隐（.hidden），不重建 DOM、不动事件监听，
         也不触发任何请求 —— 数据仍按原来的轮询节奏刷新。
       -->
+      <div class="left-body">
       <nav class="side-nav">
-        <button class="nav-item" type="button" data-panel="overview">概览</button>
-        <button class="nav-item" type="button" data-panel="connect">连接<span class="nav-dot hidden"></span></button>
-        <button class="nav-item" type="button" data-panel="model">模型</button>
-        <button class="nav-item" type="button" data-panel="persona">人设</button>
-        <button class="nav-item" type="button" data-panel="behavior">行为</button>
-        <button class="nav-item" type="button" data-panel="ability">能力</button>
-        <button class="nav-item" type="button" data-panel="memory">记忆</button>
-        <button class="nav-item" type="button" data-panel="console">控制台</button>
+        <button class="nav-item" type="button" data-panel="overview">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>
+          <span class="nav-text">概览</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="connect">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <span class="nav-text">连接</span><span class="nav-dot hidden"></span>
+        </button>
+        <button class="nav-item" type="button" data-panel="model">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></svg>
+          <span class="nav-text">模型</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="persona">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
+          <span class="nav-text">人设</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="behavior">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7.5" width="20" height="9" rx="4.5"/><circle cx="16.5" cy="12" r="2.6"/></svg>
+          <span class="nav-text">行为</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="ability">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2.5"/><circle cx="8.5" cy="9.5" r="1.6"/><path d="m4 17.5 4.5-4.5 3.5 3.5 3-2.5 5 4.5"/></svg>
+          <span class="nav-text">能力</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="memory">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 3h10a2 2 0 0 1 2 2v16l-7-4-7 4V5a2 2 0 0 1 2-2z"/></svg>
+          <span class="nav-text">记忆</span>
+        </button>
+        <button class="nav-item" type="button" data-panel="console">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+          <span class="nav-text">控制台</span>
+        </button>
       </nav>
 
       <div class="panel-area">
@@ -1894,6 +1953,8 @@ select:focus { border-color: var(--accent); }
       </section><!-- /panel: console -->
 
       </div><!-- /panel-area -->
+
+      </div><!-- /left-body -->
 
     </div>
 

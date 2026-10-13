@@ -41,14 +41,12 @@
 | `Persona.java` | 人设加载：支持独立的 md/txt 文件，改文件即生效 |
 | `ImageClient.java` | 画图：走 Gemini 生图模型，跳过思考草稿取成品图；支持参考图（图生图） |
 | `AvatarFetcher.java` | 抓 QQ 头像：qlogo 固定地址，不需要接口调用 |
-| `haruka.md` | **你自己的人设**（在 `.gitignore` 里，不进仓库）。仓库里给的是 `persona.example.md` |
 | `persona.example.md` | **示例人设**：复制一份改成你自己的角色即可 |
 | `Config.java` / `ConfigStore.java` / `ConfigWatcher.java` | 配置读取、写回、以及**文件被手改后自动热重载** |
 | `WebConsole.java` | **只有 HTTP API**，不提供页面也不依赖页面 |
 | `Log.java` / `RuntimeStatus.java` | 自带日志（含环形缓冲）+ 运行状态 |
 | `webui/index.html` | **独立的前端页面**，单文件、零依赖，可 `file://` 直接打开 |
 | `config.example.properties` | **配置模板**（全是 `CHANGE_ME` / 空值，可安全提交） |
-| `config.properties` | **你自己那份**（复制模板而来，在 `.gitignore` 里，不进仓库） |
 | `LICENSE` | MIT |
 
 ## 前置
