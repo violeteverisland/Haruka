@@ -55,6 +55,8 @@ public final class WebConsole {
     /** 覆盖人设前给旧版本留的备份后缀。 */
     private static final DateTimeFormatter BACKUP_STAMP = DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss");
     private static final String BUILTIN_PAGE = "/webui/index.html";
+    /** OneBot 反向 WS 的路径。控制台要把它连同地址一起展示给用户抄。 */
+    private static final String WS_PATH = "/onebot/v11/ws";
 
     /** 改这些键必须重启才生效，其余都是热更新。 */
     private static final Set<String> RESTART_KEYS = Set.of(
@@ -113,7 +115,7 @@ public final class WebConsole {
             log.warn("未设置 web.secret，本机任何人都能访问控制接口；要远程访问必须设置它");
         }
         log.info("控制接口: /api/meta /api/status /api/config /api/config/raw /api/reload");
-        log.info("          /api/models /api/test-llm /api/logs/history /api/logs/stream");
+        log.info("          /api/models /api/llm-urls /api/test-llm /api/logs/history /api/logs/stream");
         log.info("          /api/memories /api/memories/delete /api/memories/export /api/memories/import");
         Path root = staticRoot();
         if (root != null) {
@@ -173,6 +175,7 @@ public final class WebConsole {
                 case "/api/persona" -> guarded(ex, this::handlePersona);
                 case "/api/reload" -> guarded(ex, this::handleReload);
                 case "/api/models" -> guarded(ex, this::handleModels);
+                case "/api/llm-urls" -> guarded(ex, this::handleLlmUrls);
                 case "/api/test-llm" -> guarded(ex, this::handleTestLlm);
                 case "/api/memories" -> guarded(ex, this::handleMemories);
                 case "/api/memories/delete" -> guarded(ex, this::handleMemoryDelete);
@@ -259,6 +262,36 @@ public final class WebConsole {
 
     // ---------------------------------------------------------------- 状态
 
+    /**
+     * 本机所有可用的局域网 IPv4 地址，用来拼「该填进 SnowLuma 的 ws:// 地址」。
+     *
+     * <p>省掉用户自己跑 ipconfig 那一步。回环地址不算 —— 填进 SnowLuma 的应该是
+     * 局域网地址（同一台机器上用 127.0.0.1 也行，所以两个都给）。
+     */
+    private static List<String> localIpv4() {
+        List<String> out = new java.util.ArrayList<>();
+        try {
+            for (java.net.NetworkInterface nic
+                    : java.util.Collections.list(java.net.NetworkInterface.getNetworkInterfaces())) {
+                if (!nic.isUp() || nic.isLoopback() || nic.isVirtual()) {
+                    continue;
+                }
+                for (java.net.InetAddress address
+                        : java.util.Collections.list(nic.getInetAddresses())) {
+                    if (address instanceof java.net.Inet4Address && !address.isLoopbackAddress()) {
+                        String ip = address.getHostAddress();
+                        if (ip != null && !ip.isBlank() && !out.contains(ip)) {
+                            out.add(ip);
+                        }
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.debug("枚举本机地址失败: {}", Log.rootMessage(e));
+        }
+        return out;
+    }
+
     private void handleStatus(HttpExchange ex) throws IOException {
         json(ex, 200, ok(buildStatus()));
     }
@@ -275,6 +308,16 @@ public final class WebConsole {
         data.put("selfId", status.selfId);
         data.put("nickname", status.nickname);
         data.put("remoteAddress", status.remoteAddress);
+        // 给「连接 QQ」卡片用：把用户要抄进 SnowLuma 的东西直接算好。
+        // 连接 QQ 全靠这两项，让他自己去翻配置文件或跑 ipconfig 是没道理的。
+        data.put("wsPath", WS_PATH);
+        data.put("accessToken", cfg.accessToken == null ? "" : cfg.accessToken);
+        data.put("accessTokenSet", !isBlank(cfg.accessToken));
+        ArrayNode wsUrls = data.putArray("wsUrls");
+        wsUrls.add("ws://127.0.0.1:" + cfg.port + WS_PATH);
+        for (String ip : localIpv4()) {
+            wsUrls.add("ws://" + ip + ":" + cfg.port + WS_PATH);
+        }
         data.put("received", status.received());
         data.put("replied", status.replied());
         data.put("failed", status.failed());
@@ -692,20 +735,108 @@ public final class WebConsole {
 
     // ---------------------------------------------------------------- 模型
 
+    /**
+     * 列模型。
+     *
+     * <p>支持 POST 带覆盖值 {@code {provider, base_url, api_key}} —— 用户在表单里刚敲的
+     * 值可以不保存就测。空字符串表示"这一项不改"，沿用已保存的配置（和 api_key 的约定一致）。
+     */
     private void handleModels(HttpExchange ex) {
+        JsonNode body = readBodyQuietly(ex);
+        String provider = LlmClients.normalizeProvider(
+                override(body, "provider", cfg.llmProvider));
+        String baseUrl = override(body, "base_url", cfg.llmBaseUrl);
+        String apiKey = override(body, "api_key", cfg.llmApiKey);
+
+        boolean gemini = "gemini".equals(provider);
+        String requestUrl = gemini ? GeminiLlmClient.modelsUrl(baseUrl) : OpenAiLlmClient.modelsUrl(baseUrl);
         try {
-            List<String> models = llm.listModels();
+            List<String> models = gemini
+                    ? GeminiLlmClient.listModels(baseUrl, apiKey, cfg.llmTimeoutSeconds)
+                    : OpenAiLlmClient.listModels(baseUrl, apiKey, cfg.llmTimeoutSeconds);
             ObjectNode data = MAPPER.createObjectNode();
-            data.put("provider", LlmClients.normalizeProvider(cfg.llmProvider));
-            data.put("baseUrl", cfg.llmBaseUrl);
+            data.put("provider", provider);
+            data.put("baseUrl", baseUrl);
+            data.put("requestUrl", requestUrl);
             ArrayNode array = data.putArray("models");
             for (String model : models) {
                 array.add(model);
             }
             json(ex, 200, ok(data));
         } catch (Exception e) {
-            json(ex, 200, err("连接失败: " + Log.rootMessage(e)));
+            String detail = Log.rootMessage(e);
+            // 用户点了按钮就必须知道为什么失败：既进日志面板，也进响应体。
+            log.warn("拉取模型列表失败（provider={} base_url={}）: {}（实际请求 {}）",
+                    provider, baseUrl, detail, requestUrl);
+            json(ex, 200, err("拉取模型列表失败： " + detail
+                    + "\n实际请求的是 " + requestUrl
+                    + "\n请照着上面的「实际请求」核对 base_url 该填到哪一层，以及 api_key 是否正确。"));
         }
+    }
+
+    /**
+     * 把 provider / base_url / model 拼成真实的请求地址，给控制台做「实际请求」预览。
+     *
+     * <p>刻意放在后端算：归一化规则只有一份。前端要是自己复制一份，两处迟早不一致，
+     * 而用户正是照着这个预览去填 base_url 的 —— 预览错了比没有预览更坏。
+     */
+    private void handleLlmUrls(HttpExchange ex) {
+        JsonNode body = readBodyQuietly(ex);
+        String provider = LlmClients.normalizeProvider(override(body, "provider", cfg.llmProvider));
+        // base_url 和 model 取字面值，**不回落到已保存的配置** ——
+        // 预览的意义就是"照表单现在填的算出来给你看"，回落会让用户看到
+        // 一个他没填过的地址，比没有预览更坏。
+        String baseUrl = literal(body, "base_url");
+        String model = literal(body, "model");
+
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("provider", provider);
+        data.put("baseUrl", baseUrl);
+        if (baseUrl.isBlank()) {
+            // 没填就拼不出来，别编一个假的地址骗用户。
+            data.put("chatUrl", "");
+            data.put("modelsUrl", "");
+            data.put("modelPlaceholder", false);
+        } else if ("gemini".equals(provider)) {
+            boolean placeholder = model.isBlank();
+            data.put("chatUrl", placeholder
+                    ? GeminiLlmClient.modelsUrl(baseUrl) + "/<model>:generateContent"
+                    : GeminiLlmClient.buildEndpoint(baseUrl, model));
+            data.put("modelsUrl", GeminiLlmClient.modelsUrl(baseUrl));
+            // 明确告诉前端"这个地址里的 model 是占位符"，
+            // 别让它去猜字符串形态 —— 改一次占位写法前端就失效了。
+            data.put("modelPlaceholder", placeholder);
+        } else {
+            data.put("chatUrl", OpenAiLlmClient.chatUrl(baseUrl));
+            data.put("modelsUrl", OpenAiLlmClient.modelsUrl(baseUrl));
+            // OpenAI 协议下 model 在请求体里，不在 URL 上，所以永远不算占位。
+            data.put("modelPlaceholder", false);
+        }
+        json(ex, 200, ok(data));
+    }
+
+    /** 取请求体；取不到（GET、空体、格式不对）就返回 null，由调用方回落到已保存的配置。 */
+    private JsonNode readBodyQuietly(HttpExchange ex) {
+        try {
+            return readJson(ex);
+        } catch (Exception e) {
+            log.debug("读请求体失败，改用已保存的配置: {}", Log.rootMessage(e));
+            return null;
+        }
+    }
+
+    /** 覆盖值优先；缺失或空串表示"这一项不改"，用 fallback。 */
+    private static String override(JsonNode body, String key, String fallback) {
+        if (body == null || !body.hasNonNull(key)) {
+            return fallback;
+        }
+        String value = body.path(key).asText("").trim();
+        return value.isEmpty() ? fallback : value;
+    }
+
+    /** 取字面值：空就是空，不回落到任何默认值。用于"照表单算"的预览类接口。 */
+    private static String literal(JsonNode body, String key) {
+        return body == null ? "" : body.path(key).asText("").trim();
     }
 
     /**

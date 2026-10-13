@@ -40,14 +40,24 @@ public final class Main {
             return;
         }
 
-        // 仅控制台模式下不检查 access_token：这种跑法本来就是为了先把配置改好。
-        if (!webOnly && cfg.accessToken.isBlank()) {
-            System.err.println("配置文件里 server.access_token 还没填: " + path);
-            System.exit(2);
-            return;
-        }
-
         ConfigStore store = new ConfigStore(path, cfg);
+
+        // server.access_token 没填（或还是模板里那个 CHANGE_ME）就当场生成一个，写回配置文件并大声打印。
+        // 绝不能留一个公开的默认值 —— server.host 默认是 0.0.0.0，那样谁都能伪装成 SnowLuma 连上 18080。
+        // 「只跑控制接口」模式不生成：那种跑法本来就是为了先把配置改好。
+        if (!webOnly && accessTokenUnset(cfg.accessToken)) {
+            String generated = randomToken();
+            boolean saved = false;
+            try {
+                store.apply(java.util.Map.of("server.access_token", generated));
+                saved = true;
+            } catch (java.io.IOException e) {
+                // 写不进去也不要紧：内存里这份照样能用，用户在日志里看得到。
+                cfg.accessToken = generated;
+                log.warn("生成的 access_token 写不回配置文件: {}", Log.rootMessage(e));
+            }
+            announceToken(generated, saved, path);
+        }
         RuntimeStatus status = new RuntimeStatus();
         status.webOnly = webOnly;
 
@@ -187,6 +197,43 @@ public final class Main {
 
     private static String displayHost(String host) {
         return host == null || host.isBlank() || "0.0.0.0".equals(host) ? "127.0.0.1" : host;
+    }
+
+    /**
+     * {@code server.access_token} 是否还没被真正设置过：空，或者还是模板里的占位符。
+     *
+     * <p>占位符必须当成"没设"。否则服务会带着一个**公开的默认口令**跑起来，
+     * 而 {@code server.host} 默认是 {@code 0.0.0.0} —— 等于把消息通道敞开。
+     */
+    private static boolean accessTokenUnset(String token) {
+        return token == null || token.isBlank() || token.trim().equalsIgnoreCase("CHANGE_ME");
+    }
+
+    /** 生成连接凭据。用 URL 安全的 base64，避免复制粘贴时被特殊字符坑到。 */
+    private static String randomToken() {
+        byte[] buf = new byte[24];
+        new java.security.SecureRandom().nextBytes(buf);
+        return java.util.Base64.getUrlEncoder().withoutPadding().encodeToString(buf);
+    }
+
+    /**
+     * 把凭据大声打出来。
+     *
+     * <p>用户要在 SnowLuma 里手抄这一串，日志是唯一可靠的下发渠道 ——
+     * 所以不能只在配置文件里悄悄写一行，那样等于让人去猜。
+     */
+    private static void announceToken(String token, boolean saved, String path) {
+        log.info("");
+        log.info("================== 首次启动：已生成连接凭据 ==================");
+        log.info("  server.access_token = {}", token);
+        log.info("  把它原样填进 SnowLuma「反向 WebSocket」的 Access Token。");
+        if (saved) {
+            log.info("  已写回配置文件，以后不用再管：{}", path);
+        } else {
+            log.info("  写不进配置文件，只在本进程内有效（重启会重新生成）。");
+        }
+        log.info("==============================================================");
+        log.info("");
     }
 
     private static void putIfAbsent(String key, String value) {

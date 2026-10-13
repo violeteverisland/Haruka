@@ -95,8 +95,15 @@ public final class OpenAiLlmClient implements LlmClient {
 
     @Override
     public List<String> listModels() throws Exception {
-        JsonNode root = JsonHttp.getJson(modelsUrl(cfg.llmBaseUrl), headers(),
-                cfg.llmTimeoutSeconds, "OpenAI");
+        return listModels(cfg.llmBaseUrl, cfg.llmApiKey, cfg.llmTimeoutSeconds);
+    }
+
+    /**
+     * 用显式参数列模型，供控制台「拉取模型列表」用 ——
+     * 表单里刚改的 base_url 还没保存也能立刻测。
+     */
+    static List<String> listModels(String baseUrl, String apiKey, int timeoutSeconds) throws Exception {
+        JsonNode root = JsonHttp.getJson(modelsUrl(baseUrl), authHeaders(apiKey), timeoutSeconds, "OpenAI");
         List<String> names = new ArrayList<>();
         // 标准形状是 {"data":[{"id":"..."}]}；个别中转站直接给数组，两种都认。
         JsonNode array = root.isArray() ? root : root.path("data");
@@ -110,9 +117,13 @@ public final class OpenAiLlmClient implements LlmClient {
     }
 
     private Map<String, String> headers() {
+        return authHeaders(cfg.llmApiKey);
+    }
+
+    private static Map<String, String> authHeaders(String apiKey) {
         Map<String, String> headers = new LinkedHashMap<>();
-        if (!cfg.llmApiKey.isBlank()) {
-            headers.put("Authorization", "Bearer " + cfg.llmApiKey);
+        if (apiKey != null && !apiKey.isBlank()) {
+            headers.put("Authorization", "Bearer " + apiKey);
         }
         return headers;
     }

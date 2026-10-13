@@ -271,6 +271,63 @@ select:focus { border-color: var(--accent); }
 
 .col-left, .col-right { min-width: 0; }
 
+/* ---------------- 左栏：分区导航 ---------------- */
+
+.col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.side-nav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.nav-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: #f7f8f8;
+  color: var(--text-2);
+  font-family: inherit;
+  font-size: 12.5px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .12s, color .12s, border-color .12s;
+}
+.nav-item:hover { background: #eef1f1; color: var(--text); }
+.nav-item.active {
+  background: var(--accent-soft);
+  border-color: var(--accent-line);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* 只在「连接」上挂状态点：未连接时显示，已连接时藏起来 */
+.nav-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--danger);
+}
+
+.panel-area, .panel { min-width: 0; }
+
 /* ---------------- 卡片 ---------------- */
 
 .card {
@@ -482,6 +539,81 @@ select:focus { border-color: var(--accent); }
   overflow: auto;
 }
 .model-list:empty { display: none; }
+
+/* 「先拉列表再选 model」这一步的按钮行 */
+.model-fetch-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 拉取模型列表的结果摘要 / 错误 */
+.model-status:empty { display: none; }
+.model-status {
+  margin-top: 8px;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+  word-break: break-all;
+}
+
+/* 醒目错误块：整段原样展示后端文案（可能是多行） */
+.error-box {
+  padding: 9px 11px;
+  border: 1px solid var(--danger-line);
+  border-left: 3px solid var(--danger);
+  border-radius: 6px;
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.6;
+}
+.error-box-title {
+  font-family: var(--sans);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.error-box-body {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* base_url 的「实际请求」预览：地址一律由后端算，前端不复制拼接规则 */
+.url-preview {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fafbfb;
+}
+.url-preview-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 11.5px;
+  line-height: 1.65;
+}
+.url-preview-row + .url-preview-row { margin-top: 3px; }
+.url-preview-k { flex: none; width: 92px; color: var(--muted); }
+.url-preview-v { min-width: 0; word-break: break-all; }
+.url-preview-v b {
+  margin-right: 5px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.url-preview-v code {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: var(--text);
+}
+.url-preview-note { margin-top: 5px; font-size: 11.5px; color: var(--muted); }
+.url-preview-note.err-text { color: var(--danger); }
 
 .model-chip {
   font-size: 11.5px;
@@ -707,9 +839,31 @@ select:focus { border-color: var(--accent); }
   color: var(--muted);
   margin-bottom: 5px;
 }
-.draw-notes ul, .note-box ul { margin: 0; padding-left: 18px; }
+.draw-notes ul, .note-box ul, .note-box ol { margin: 0; padding-left: 18px; }
 .draw-notes li, .note-box li { margin-bottom: 2px; }
 .draw-notes li:last-child, .note-box li:last-child { margin-bottom: 0; }
+
+/* ---------------- 连接 QQ ---------------- */
+
+.qq-state {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.qq-state .badge { font-size: 10.5px; }
+
+#qqWsSelect {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+#qqTokenText { letter-spacing: .02em; }
+.qq-token-empty { color: var(--muted); }
 
 /* 卡片内部的小节标题 */
 .sub-title {
@@ -970,6 +1124,8 @@ select:focus { border-color: var(--accent); }
   .layout { grid-template-columns: minmax(0, 1fr); }
   .log-panel { position: static; height: 62vh; }
   .log-name { max-width: 96px; }
+  /* 窄屏：导航收成一条可横向滚动的条，不要竖排占满一屏 */
+  .side-nav { flex-wrap: nowrap; overflow-x: auto; }
 }
 
 @media (max-width: 520px) {
@@ -999,6 +1155,7 @@ select:focus { border-color: var(--accent); }
       <input type="password" id="connectSecret" class="mono" autocomplete="new-password">
       <button class="btn btn-slim" id="toggleConnectSecret" type="button">显示</button>
     </div>
+    <div class="hint">填后端的 <span class="mono">web.secret</span>。后端没设就 <strong>留空</strong>（默认就是本机不校验）。</div>
 
     <div style="height:14px"></div>
     <button class="btn btn-primary btn-block" id="connectBtn" type="submit">连接</button>
@@ -1032,8 +1189,68 @@ select:focus { border-color: var(--accent); }
 
   <div class="layout">
 
-    <!-- ---------------- 左栏 ---------------- -->
+    <!-- ---------------- 左栏：分区导航 + 内容区 ---------------- -->
     <div class="col-left">
+
+      <!--
+        分区导航：只切显隐（.hidden），不重建 DOM、不动事件监听，
+        也不触发任何请求 —— 数据仍按原来的轮询节奏刷新。
+      -->
+      <nav class="side-nav">
+        <button class="nav-item" type="button" data-panel="overview">概览</button>
+        <button class="nav-item" type="button" data-panel="connect">连接<span class="nav-dot hidden"></span></button>
+        <button class="nav-item" type="button" data-panel="model">模型</button>
+        <button class="nav-item" type="button" data-panel="persona">人设</button>
+        <button class="nav-item" type="button" data-panel="behavior">行为</button>
+        <button class="nav-item" type="button" data-panel="ability">能力</button>
+        <button class="nav-item" type="button" data-panel="memory">记忆</button>
+        <button class="nav-item" type="button" data-panel="console">控制台</button>
+      </nav>
+
+      <div class="panel-area">
+
+      <section class="panel" data-panel="overview">
+      <!-- 连接 QQ（放在最前面：打开控制台第一眼要看到怎么连上） -->
+      <section class="card">
+        <h2 class="card-title">连接 QQ</h2>
+
+        <div class="qq-state">
+          <span class="badge badge-off" id="qqStateBadge">未连接</span>
+          <span id="qqStateText">正在获取状态…</span>
+        </div>
+
+        <div class="alert alert-warn hidden" id="qqWebOnlyAlert">
+          当前是<strong>仅控制台模式</strong>，机器人本体没在跑，连上也收不到消息。
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label class="field-label" for="qqWsSelect">反向 WS 地址（填进 SnowLuma）</label>
+          <div class="row-inline">
+            <select id="qqWsSelect"></select>
+            <button class="btn btn-slim" id="qqWsCopy" type="button">复制</button>
+          </div>
+          <div class="hint" id="qqWsHint">正在获取地址…</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="qqTokenText">Access Token（填进 SnowLuma）</label>
+          <div class="row-inline">
+            <input type="text" id="qqTokenText" class="mono" readonly spellcheck="false">
+            <button class="btn btn-slim" id="qqTokenToggle" type="button">显示</button>
+            <button class="btn btn-slim" id="qqTokenCopy" type="button">复制</button>
+          </div>
+          <div class="hint" id="qqTokenHint">这一串要和 SnowLuma 里的 Access Token 完全一致。</div>
+        </div>
+
+        <div class="note-box">
+          <div class="note-box-title">三步连上 QQ</div>
+          <ol>
+            <li>在 SnowLuma 里新增一个「反向 WebSocket」连接。</li>
+            <li>地址填上面那个 <span class="mono">ws://…</span>。</li>
+            <li>Access Token 填上面那一串。</li>
+          </ol>
+        </div>
+      </section>
 
       <!-- 运行状态 -->
       <section class="card">
@@ -1078,6 +1295,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="model">
       <!-- 模型自测 -->
       <section class="card">
         <h2 class="card-title" id="testCardTitle">模型自测</h2>
@@ -1128,13 +1348,27 @@ select:focus { border-color: var(--accent); }
               <input type="radio" name="provider" value="gemini"><span>Gemini 原生</span>
             </label>
           </div>
-          <div class="hint mono" id="protocolHint" style="color:#4a5259"></div>
           <div class="hint" id="protocolNote"></div>
         </div>
 
         <div class="field">
           <label class="field-label" for="cfgBaseUrl">base_url</label>
           <input type="text" id="cfgBaseUrl" class="mono" placeholder="http://127.0.0.1:8080">
+          <div class="url-preview" id="urlPreview">
+            <div class="url-preview-row">
+              <span class="url-preview-k">实际请求（对话）</span>
+              <span class="url-preview-v"><b>POST</b><code id="urlChat">-</code></span>
+            </div>
+            <div class="url-preview-row">
+              <span class="url-preview-k">拉取列表</span>
+              <span class="url-preview-v"><b>GET</b><code id="urlModels">-</code></span>
+            </div>
+            <div class="url-preview-row">
+              <span class="url-preview-k">归一化后的 base_url</span>
+              <span class="url-preview-v"><code id="urlBase">-</code></span>
+            </div>
+            <div class="url-preview-note" id="urlPreviewNote"></div>
+          </div>
         </div>
 
         <div class="field">
@@ -1149,14 +1383,23 @@ select:focus { border-color: var(--accent); }
           <div class="hint">后端不会下发真实 key。留空表示保持原值不变，填入内容则覆盖。</div>
         </div>
 
+        <!-- 顺序即流程：先拉列表（不依赖 model），再选/填 model -->
         <div class="field">
-          <label class="field-label" for="cfgModel">model</label>
-          <div class="row-inline">
-            <input type="text" id="cfgModel" class="mono" placeholder="gemini-3.8-flash-low">
-            <button class="btn btn-slim" id="fetchModelsBtn" type="button">拉取模型列表</button>
+          <label class="field-label">① 拉取模型列表</label>
+          <div class="model-fetch-row">
+            <button class="btn btn-primary btn-slim" id="fetchModelsBtn" type="button">拉取模型列表</button>
+            <span class="hint" style="margin:0">
+              这一步<strong>不依赖 model</strong> —— 填好上面的 base_url 和 api_key 就能拉，也不需要先保存。
+            </span>
           </div>
-          <div class="hint">拉取使用后端<strong>已保存</strong>的 provider / base_url / api_key，改完上面的项请先保存。</div>
+          <div class="model-status" id="modelStatus"></div>
           <div class="model-list" id="modelList"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgModel">② model</label>
+          <input type="text" id="cfgModel" class="mono" placeholder="点「拉取模型列表」选一个，或手动填" spellcheck="false">
+          <div class="hint">从上面列表里点一个会自动填进来；也可以直接手动输入。</div>
         </div>
 
         <div class="field">
@@ -1191,6 +1434,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="persona">
       <!-- 人设 -->
       <section class="card">
         <h2 class="card-title">人设</h2>
@@ -1240,6 +1486,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="behavior">
       <!-- 机器人行为 -->
       <section class="card">
         <h2 class="card-title">机器人行为</h2>
@@ -1313,6 +1562,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="memory">
       <!-- 长期记忆 -->
       <section class="card">
         <h2 class="card-title">长期记忆</h2>
@@ -1447,6 +1699,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="ability">
       <!-- 画图 -->
       <section class="card">
         <h2 class="card-title">画图</h2>
@@ -1565,6 +1820,9 @@ select:focus { border-color: var(--accent); }
         </div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="connect">
       <!-- OneBot 服务端 -->
       <section class="card">
         <h2 class="card-title">OneBot 反向 WS（server）</h2>
@@ -1580,11 +1838,18 @@ select:focus { border-color: var(--accent); }
         </div>
         <div class="field">
           <label class="field-label" for="cfgAccessToken">access_token</label>
-          <input type="text" id="cfgAccessToken" class="mono" placeholder="留空表示不校验">
+          <input type="text" id="cfgAccessToken" class="mono" placeholder="留空会导致没人能连上（首次启动会自动生成）" spellcheck="false">
+          <div class="hint">
+            这一串要和 SnowLuma 里的 Access Token 完全一致。首次启动会自动生成，
+            也可以在「连接 QQ」卡片里复制。
+          </div>
         </div>
         <div class="hint">改动监听地址 / 端口通常需要重启服务才生效。</div>
       </section>
 
+      </section>
+
+      <section class="panel" data-panel="console">
       <!-- 控制台本身 -->
       <section class="card">
         <h2 class="card-title">控制台本身（web）</h2>
@@ -1626,6 +1891,9 @@ select:focus { border-color: var(--accent); }
           <div class="hint">静态页面目录，留空则只提供 API，不提供页面。</div>
         </div>
       </section>
+      </section><!-- /panel: console -->
+
+      </div><!-- /panel-area -->
 
     </div>
 
@@ -1685,6 +1953,10 @@ select:focus { border-color: var(--accent); }
 
   var STORAGE_BACKEND = 'haruka.backend';
   var STORAGE_SECRET = 'haruka.secret';
+  var STORAGE_PANEL = 'haruka.panel';
+
+  // 左侧分区（顺序即导航顺序）
+  var NAV_PANELS = ['overview', 'connect', 'model', 'persona', 'behavior', 'ability', 'memory', 'console'];
 
   // 从 http(s) 打开时默认连当前源；从本地文件打开时默认连本机控制台端口
   var DEFAULT_BACKEND = (location.protocol === 'http:' || location.protocol === 'https:')
@@ -1788,6 +2060,71 @@ select:focus { border-color: var(--accent); }
   }
 
   /* ============================================================
+     左侧分区导航
+     切换只改 .hidden class —— 不重建 DOM、不动事件监听、不发请求
+     ============================================================ */
+
+  /** 读取上次停留的分区；认不出来就返回空串 */
+  function loadPanel() {
+    try {
+      var value = window.localStorage.getItem(STORAGE_PANEL);
+      return (value && NAV_PANELS.indexOf(value) >= 0) ? value : '';
+    } catch (e) {
+      // 隐私模式等场景下 localStorage 不可用
+      return '';
+    }
+  }
+
+  function savePanel(name) {
+    try {
+      window.localStorage.setItem(STORAGE_PANEL, name);
+    } catch (e) {
+      // 存不下也不影响本次会话
+    }
+  }
+
+  function switchPanel(name) {
+    if (NAV_PANELS.indexOf(name) < 0) { name = 'overview'; }
+
+    var panels = document.querySelectorAll('.panel-area > .panel');
+    for (var i = 0; i < panels.length; i++) {
+      panels[i].classList.toggle('hidden', panels[i].getAttribute('data-panel') !== name);
+    }
+
+    var items = document.querySelectorAll('.side-nav .nav-item');
+    for (var j = 0; j < items.length; j++) {
+      items[j].classList.toggle('active', items[j].getAttribute('data-panel') === name);
+    }
+
+    state.panel = name;
+    savePanel(name);
+  }
+
+  /** 进入控制台时恢复上次的分区（没有就停在「概览」） */
+  function initPanel() {
+    switchPanel(loadPanel() || 'overview');
+  }
+
+  /** 往上找这个元素属于哪个分区（保存校验失败时要把用户带到出错的那一页） */
+  function panelOf(el) {
+    var node = el;
+    while (node && node.classList) {
+      if (node.classList.contains('panel')) { return node.getAttribute('data-panel') || ''; }
+      node = node.parentNode;
+    }
+    return '';
+  }
+
+  function bindNav() {
+    var items = document.querySelectorAll('.side-nav .nav-item');
+    for (var i = 0; i < items.length; i++) {
+      items[i].addEventListener('click', function () {
+        switchPanel(this.getAttribute('data-panel'));
+      });
+    }
+  }
+
+  /* ============================================================
      请求封装
      所有请求都指向 <backend>/api/...，并带 Authorization: Bearer <密钥>
      ============================================================ */
@@ -1822,7 +2159,7 @@ select:focus { border-color: var(--accent); }
           try { payload = JSON.parse(text); } catch (e) { payload = null; }
         }
         if (res.status === 401) {
-          if (!opts.ignore401) { showConnect('密钥不正确或已失效，请重新填写'); }
+          if (!opts.ignore401) { showConnect('密钥不正确。后端 config.properties 里的 web.secret 留空时，这个框也要留空'); }
           throw new ApiError('密钥不正确或已失效', 401);
         }
         if (!payload || payload.ok !== true) {
@@ -1860,7 +2197,11 @@ select:focus { border-color: var(--accent); }
     memDebounce: null,
     memEditingId: 0,
     // 人设文件
-    persona: { loaded: false, savedText: '', configuredPath: '', resolvedPath: '', exists: false, mtime: 0 }
+    persona: { loaded: false, savedText: '', configuredPath: '', resolvedPath: '', exists: false, mtime: 0 },
+    // 连接 QQ 卡片
+    qq: { url: '', urls: [], token: '', tokenSet: false, showToken: false },
+    // 左侧导航当前分区
+    panel: 'overview'
   };
 
   /* ============================================================
@@ -1913,6 +2254,8 @@ select:focus { border-color: var(--accent); }
 
   function enterConsole(initialStatus) {
     state.connected = true;
+    // 先恢复上次停留的分区，再显示控制台，避免出现"所有分区堆在一起"的一瞬
+    initPanel();
     $('connectView').classList.add('hidden');
     $('consoleView').classList.remove('hidden');
     $('connectError').textContent = '';
@@ -1922,6 +2265,7 @@ select:focus { border-color: var(--accent); }
     // 上一个后端的残留信息清干净
     hideRestartRequired();
     $('modelList').innerHTML = '';
+    renderModelStatus('');
     $('testResult').classList.add('hidden');
     $('testResult').innerHTML = '';
     $('testScope').value = '';
@@ -1933,6 +2277,7 @@ select:focus { border-color: var(--accent); }
 
     resetMemoryPanel();
     resetPersonaPanel();
+    resetConnectQq();
 
     startStatusPolling(initialStatus);
     loadConfig();
@@ -2019,7 +2364,7 @@ select:focus { border-color: var(--accent); }
       .then(function (res) { renderStatus(res.data || {}); })
       .catch(function (err) {
         if (err.status === 401) {
-          showConnect('密钥不正确或已失效，请重新填写');
+          showConnect('密钥不正确。后端 config.properties 里的 web.secret 留空时，这个框也要留空');
         } else {
           $('connState').className = 'conn off';
           $('connText').textContent = '连不上后端';
@@ -2027,10 +2372,151 @@ select:focus { border-color: var(--accent); }
       });
   }
 
+  /* ---------------- 连接 QQ 卡片 ---------------- */
+
+  /** 掩码：只保留前 4 位和后 4 位，中间用 • 代替（短 token 全部打码） */
+  function maskToken(token) {
+    var t = String(token || '');
+    if (!t) { return ''; }
+    if (t.length <= 8) {
+      return new Array(t.length + 1).join('\u2022');
+    }
+    return t.slice(0, 4) + new Array(t.length - 7).join('\u2022') + t.slice(-4);
+  }
+
+  /** 只负责把当前 state 画进 token 输入框：掩码 / 明文切换都走这里 */
+  function renderTokenField() {
+    var input = $('qqTokenText');
+    var toggle = $('qqTokenToggle');
+    var copy = $('qqTokenCopy');
+
+    if (!state.qq.tokenSet || !state.qq.token) {
+      input.value = '还没配置（下次启动会自动生成）';
+      input.classList.add('qq-token-empty');
+      toggle.disabled = true;
+      copy.disabled = true;
+      $('qqTokenHint').textContent = '后端没有下发 token，说明 server.access_token 是空的，现在没人能连上。';
+      return;
+    }
+
+    input.classList.remove('qq-token-empty');
+    toggle.disabled = false;
+    copy.disabled = false;
+    input.value = state.qq.showToken ? state.qq.token : maskToken(state.qq.token);
+    toggle.textContent = state.qq.showToken ? '隐藏' : '显示';
+    $('qqTokenHint').textContent = '这一串要和 SnowLuma 里的 Access Token 完全一致（共 '
+      + state.qq.token.length + ' 位）。';
+  }
+
+  function renderConnectQq(d) {
+    var connected = !!d.oneBotConnected;
+    var badge = $('qqStateBadge');
+    badge.textContent = connected ? '已连接' : '未连接';
+    badge.className = 'badge ' + (connected ? 'badge-on' : 'badge-off');
+
+    var who = [];
+    if (d.nickname) { who.push(d.nickname); }
+    if (d.selfId) { who.push(d.selfId); }
+    $('qqStateText').textContent = connected
+      ? ('SnowLuma 已连接' + (who.length ? '（' + who.join(' / ') + '）' : ''))
+      : 'SnowLuma 未连接';
+
+    // 导航上的状态点：只有「连接」有，未连接时亮着
+    var navDot = document.querySelector('.side-nav .nav-item[data-panel="connect"] .nav-dot');
+    if (navDot) { navDot.classList.toggle('hidden', connected); }
+
+    $('qqWebOnlyAlert').classList.toggle('hidden', !d.webOnly);
+
+    // 反向 WS 地址：wsUrls 已含回环 + 各网卡地址，用户不用自己查 IP
+    var urls = Array.isArray(d.wsUrls) ? d.wsUrls.filter(function (u) { return !!u; }) : [];
+    if (!urls.length && d.wsPort) {
+      // wsUrls 缺失时用 wsHost / wsPort / wsPath 兜底（0.0.0.0 对客户端没意义，换成回环）
+      var host = (d.wsHost && d.wsHost !== '0.0.0.0' && d.wsHost !== '::') ? d.wsHost : '127.0.0.1';
+      var wsPath = d.wsPath || '';
+      if (wsPath && wsPath.charAt(0) !== '/') { wsPath = '/' + wsPath; }
+      urls = ['ws://' + host + ':' + d.wsPort + wsPath];
+    }
+    var select = $('qqWsSelect');
+    var previous = state.qq.url;
+    select.innerHTML = '';
+
+    if (urls.length) {
+      urls.forEach(function (u) {
+        var opt = document.createElement('option');
+        opt.value = u;
+        opt.textContent = u;
+        select.appendChild(opt);
+      });
+      select.value = urls.indexOf(previous) >= 0 ? previous : urls[0];
+      $('qqWsHint').textContent = urls.length > 1
+        ? ('共 ' + urls.length + ' 条（回环 + 各网卡地址），选一个 SnowLuma 所在机器能连通的。')
+        : '复制到 SnowLuma 的反向 WebSocket 设置里即可。';
+    } else {
+      var none = document.createElement('option');
+      none.value = '';
+      none.textContent = '（后端未提供地址）';
+      select.appendChild(none);
+      $('qqWsHint').textContent = '还没拿到地址，确认后端已启动 WebSocket 服务。';
+    }
+    state.qq.urls = urls;
+    state.qq.url = select.value;
+
+    // Access Token：真实值只留在 state 里，输入框里放的可能是掩码
+    state.qq.token = d.accessToken || '';
+    state.qq.tokenSet = !!d.accessTokenSet;
+    renderTokenField();
+  }
+
+  function resetConnectQq() {
+    state.qq.url = '';
+    state.qq.urls = [];
+    state.qq.token = '';
+    state.qq.tokenSet = false;
+    state.qq.showToken = false;
+
+    $('qqStateBadge').textContent = '未连接';
+    $('qqStateBadge').className = 'badge badge-off';
+    $('qqStateText').textContent = '正在获取状态…';
+    $('qqWebOnlyAlert').classList.add('hidden');
+
+    var select = $('qqWsSelect');
+    select.innerHTML = '';
+    var opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '（等待状态）';
+    select.appendChild(opt);
+    $('qqWsHint').textContent = '正在获取地址…';
+
+    renderTokenField();
+  }
+
+  function bindConnectQq() {
+    $('qqWsSelect').addEventListener('change', function () {
+      state.qq.url = this.value;
+    });
+
+    $('qqWsCopy').addEventListener('click', function () {
+      copyToClipboard($('qqWsSelect').value, this);
+    });
+
+    $('qqTokenToggle').addEventListener('click', function () {
+      state.qq.showToken = !state.qq.showToken;
+      renderTokenField();
+    });
+
+    $('qqTokenCopy').addEventListener('click', function () {
+      // 永远复制完整明文，绝不是输入框里那串掩码
+      copyToClipboard(state.qq.token, this);
+    });
+  }
+
   function renderStatus(d) {
     var connected = !!d.oneBotConnected;
     $('connState').className = 'conn ' + (connected ? 'on' : 'off');
     $('connText').textContent = connected ? 'SnowLuma 已连接' : '等待 SnowLuma 连接';
+
+    // 「连接 QQ」卡片跟着同一次状态刷新更新
+    renderConnectQq(d);
 
     // 后端模式：webOnly 表示只跑控制台，机器人本体没起来
     var webOnly = !!d.webOnly;
@@ -2121,16 +2607,12 @@ select:focus { border-color: var(--accent); }
     }
   }
 
-  /** 协议路径提示：只展示拼接模板，不做猜测性替换 */
+  /** 协议提示：只解释 base_url 该填到哪一层；具体地址由后端算（见 refreshUrlPreview） */
   function updateProtocolHint() {
     var provider = getProvider();
-    if (provider === 'openai') {
-      $('protocolHint').textContent = 'POST {base_url}/chat/completions';
-      $('protocolNote').textContent = 'base_url 该填到哪一层取决于服务端实现，请对照上面的拼接规则确认（常见写法是 …/v1）。';
-    } else {
-      $('protocolHint').textContent = 'POST {base_url}/v1beta/models/{model}:generateContent';
-      $('protocolNote').textContent = 'base_url 该填到哪一层取决于服务端实现，请确认它是否已经包含了 /v1beta/models。';
-    }
+    $('protocolNote').textContent = (provider === 'openai')
+      ? 'base_url 该填到哪一层取决于服务端实现，请对照下面的「实际请求」确认（常见写法是 …/v1）。'
+      : 'base_url 该填到哪一层取决于服务端实现，请对照下面的「实际请求」确认它是否已经包含了 /v1beta/models。';
   }
 
   function applyConfig(data) {
@@ -2218,6 +2700,8 @@ select:focus { border-color: var(--accent); }
     $('cfgAvatarTimeout').value = avatar.timeout_seconds === undefined ? '' : avatar.timeout_seconds;
 
     highlightActiveModel();
+    // 切后端 / 重新载入配置后，预览按新表单立刻重算一次
+    refreshUrlPreview();
   }
 
   function loadConfig() {
@@ -2375,7 +2859,9 @@ select:focus { border-color: var(--accent); }
     }
 
     if (!$('cfgBaseUrl').value.trim()) { bad('cfgBaseUrl', 'llm.base_url 不能为空'); }
-    if (!$('cfgModel').value.trim()) { bad('cfgModel', 'llm.model 不能为空'); }
+    if (!$('cfgModel').value.trim()) {
+      bad('cfgModel', 'llm.model 不能为空 —— 点上面的「拉取模型列表」从列表里点一个');
+    }
     if (!$('cfgServerHost').value.trim()) { bad('cfgServerHost', 'server.host 不能为空'); }
     if (!$('cfgWebHost').value.trim()) { bad('cfgWebHost', 'web.host 不能为空'); }
     if (!$('cfgMemDbPath').value.trim()) { bad('cfgMemDbPath', 'memory.db_path 不能为空'); }
@@ -2414,7 +2900,11 @@ select:focus { border-color: var(--accent); }
       toast('err', '配置未保存：' + result.problems[0]);
       if (result.firstBad) {
         var el = $(result.firstBad);
+        // 出错的字段可能在别的分区里：先切过去，否则用户看不到问题在哪
+        var panel = panelOf(el);
+        if (panel && panel !== state.panel) { switchPanel(panel); }
         try { el.focus(); } catch (e) { /* 忽略 */ }
+        try { el.scrollIntoView({ block: 'center' }); } catch (e) { /* 忽略 */ }
       }
       return;
     }
@@ -2467,13 +2957,48 @@ select:focus { border-color: var(--accent); }
 
   /* ---------------- 模型列表 ---------------- */
 
-  function renderModelList(models) {
+  /** 拉取结果的状态行（成功摘要），失败时改用 renderModelError */
+  function renderModelStatus(text) {
+    var box = $('modelStatus');
+    box.innerHTML = '';
+    if (!text) { return; }
+    box.textContent = text;
+  }
+
+  /** 顶部那条错误块：原样展示后端的多行文案，不做二次加工 */
+  function renderModelError(message) {
+    var box = $('modelStatus');
+    box.innerHTML = '';
+
+    var wrap = document.createElement('div');
+    wrap.className = 'error-box';
+
+    var title = document.createElement('div');
+    title.className = 'error-box-title';
+    title.textContent = '拉取模型列表失败';
+
+    var body = document.createElement('div');
+    body.className = 'error-box-body';
+    body.textContent = String(message || '未知错误');
+
+    wrap.appendChild(title);
+    wrap.appendChild(body);
+    box.appendChild(wrap);
+  }
+
+  function renderModelList(models, data) {
     var list = $('modelList');
     list.innerHTML = '';
+    data = data || {};
+
+    var requestUrl = data.requestUrl || '';
+    renderModelStatus('拿到 ' + models.length + ' 个模型'
+      + (requestUrl ? ' · 来自 ' + requestUrl : ''));
+
     if (!models.length) {
       var empty = document.createElement('span');
       empty.className = 'hint';
-      empty.textContent = '后端没有返回任何模型。';
+      empty.textContent = '请求成功，但这个地址没返回任何模型。';
       list.appendChild(empty);
       return;
     }
@@ -2486,6 +3011,7 @@ select:focus { border-color: var(--accent); }
       chip.addEventListener('click', function () {
         $('cfgModel').value = String(name);
         highlightActiveModel();
+        scheduleUrlPreview();
       });
       list.appendChild(chip);
     });
@@ -2505,25 +3031,98 @@ select:focus { border-color: var(--accent); }
     btn.disabled = true;
     btn.textContent = '拉取中…';
     $('modelList').innerHTML = '';
+    renderModelStatus('');
 
-    api('/api/models')
+    // 直接用表单里当前填的值测，不需要先保存；
+    // api_key 为空串 = 后端沿用已保存的 key（"留空表示不修改"的语义）
+    var body = {
+      provider: getProvider(),
+      base_url: $('cfgBaseUrl').value.trim(),
+      api_key: $('cfgApiKey').value
+    };
+
+    api('/api/models', { method: 'POST', body: body })
       .then(function (res) {
-        var models = (res.data && res.data.models) || [];
-        renderModelList(models);
+        var d = res.data || {};
+        renderModelList(d.models || [], d);
       })
       .catch(function (err) {
         if (err.status === 401) { return; }
-        var list = $('modelList');
-        list.innerHTML = '';
-        var span = document.createElement('span');
-        span.className = 'hint err-text';
-        span.textContent = '拉取失败：' + err.message;
-        list.appendChild(span);
+        // 后端给的是可行动的多行文案，原样展示
+        renderModelError(err.message);
+        toast('err', '拉取模型列表失败');
       })
       .then(function () {
         btn.disabled = false;
         btn.textContent = '拉取模型列表';
       });
+  }
+
+  /* ---------------- base_url 的「实际请求」预览 ---------------- */
+
+  var urlPreviewTimer = null;
+  var urlPreviewSeq = 0;   // 自增请求号：丢弃过期响应，避免旧结果覆盖新结果
+
+  function setUrlPreviewNote(text, isError) {
+    var note = $('urlPreviewNote');
+    note.textContent = text || '';
+    note.classList.toggle('err-text', !!isError);
+  }
+
+  /** 真正去问后端：地址的归一化只在后端算，前端不复制拼接规则 */
+  function refreshUrlPreview() {
+    var baseUrl = $('cfgBaseUrl').value.trim();
+
+    if (!baseUrl) {
+      urlPreviewSeq++;   // 让在途的旧响应作废，别回来覆盖
+      $('urlChat').textContent = '-';
+      $('urlModels').textContent = '-';
+      $('urlBase').textContent = '-';
+      setUrlPreviewNote('填上 base_url 才会有预览。', false);
+      return;
+    }
+
+    var seq = ++urlPreviewSeq;
+
+    api('/api/llm-urls', {
+      method: 'POST',
+      body: { provider: getProvider(), base_url: baseUrl, model: $('cfgModel').value.trim() }
+    })
+      .then(function (res) {
+        if (seq !== urlPreviewSeq) { return; }   // 过期响应：直接丢掉
+        var d = res.data || {};
+        var chatUrl = d.chatUrl || '';
+        $('urlChat').textContent = chatUrl || '（后端没算出对话地址）';
+        $('urlModels').textContent = d.modelsUrl || '（后端没算出列表地址）';
+        // 归一化后的 base_url：用户填了什么 vs 后端实际用什么，一眼可见
+        $('urlBase').textContent = d.baseUrl || '（后端没回传）';
+
+        // 后端直接回布尔告诉这里是不是占位符 —— 别去猜字符串形态，
+        // 哪天占位写法一改，字符串判断就静默失效了。
+        if (d.modelPlaceholder) {
+          setUrlPreviewNote('还没选 model：对话地址里的 <model> 是占位符，选好 model 后这里会变成真实地址。', false);
+        } else {
+          setUrlPreviewNote('', false);
+        }
+      })
+      .catch(function (err) {
+        if (seq !== urlPreviewSeq) { return; }
+        if (err.status === 401) { return; }
+        $('urlChat').textContent = '-';
+        $('urlModels').textContent = '-';
+        $('urlBase').textContent = '-';
+        setUrlPreviewNote('预览算不出来（'
+          + (err.status === 0 ? '后端不可达' : err.message) + '）。', true);
+      });
+  }
+
+  /** 输入时防抖 300ms 再算，避免每敲一个字都打后端 */
+  function scheduleUrlPreview() {
+    if (urlPreviewTimer) { clearTimeout(urlPreviewTimer); }
+    urlPreviewTimer = setTimeout(function () {
+      urlPreviewTimer = null;
+      refreshUrlPreview();
+    }, 300);
   }
 
   /* ---------------- 模型自测 ---------------- */
@@ -3232,20 +3831,43 @@ select:focus { border-color: var(--accent); }
     return Math.floor(month / 12) + ' 年前';
   }
 
-  /** 复制到剪贴板：优先用异步 API，不可用时退回临时 textarea */
-  function copyToClipboard(text) {
+  /** 复制反馈：按钮文字短暂变成「已复制」 */
+  function flashButtonLabel(button, label) {
+    if (!button) { return; }
+    if (button.dataset.copyOriginal === undefined) {
+      button.dataset.copyOriginal = button.textContent;
+    }
+    if (button.copyTimer) { clearTimeout(button.copyTimer); }
+    button.textContent = label;
+    button.copyTimer = setTimeout(function () {
+      button.textContent = button.dataset.copyOriginal;
+      button.copyTimer = null;
+    }, 1500);
+  }
+
+  /**
+   * 复制到剪贴板：优先用异步 API，不可用时退回临时 textarea。
+   * @param {string} text         要复制的完整文本（绝不是掩码）
+   * @param {HTMLElement} [button] 传了就把按钮文字闪成「已复制」
+   */
+  function copyToClipboard(text, button) {
     if (!text) { return; }
+    var done = function (ok) {
+      flashButtonLabel(button, ok ? '已复制' : '复制失败');
+      toast(ok ? 'ok' : 'err', ok ? '已复制：' + text : '复制失败，请手动选中复制');
+    };
     if (navigator.clipboard && navigator.clipboard.writeText) {
       navigator.clipboard.writeText(text).then(function () {
-        toast('ok', '已复制：' + text);
+        done(true);
       }, function () {
-        fallbackCopy(text);
+        done(fallbackCopy(text));
       });
     } else {
-      fallbackCopy(text);
+      done(fallbackCopy(text));
     }
   }
 
+  /** 返回是否复制成功（反馈统一由 copyToClipboard 负责） */
   function fallbackCopy(text) {
     try {
       var ta = document.createElement('textarea');
@@ -3257,9 +3879,9 @@ select:focus { border-color: var(--accent); }
       ta.select();
       var ok = document.execCommand('copy');
       document.body.removeChild(ta);
-      toast(ok ? 'ok' : 'err', ok ? '已复制：' + text : '复制失败，请手动选中复制');
+      return ok;
     } catch (e) {
-      toast('err', '复制失败，请手动选中复制');
+      return false;
     }
   }
 
@@ -3770,13 +4392,18 @@ select:focus { border-color: var(--accent); }
       radios[i].addEventListener('change', function () {
         syncSegActive();
         updateProtocolHint();
+        scheduleUrlPreview();
       });
     }
 
-    $('cfgBaseUrl').addEventListener('input', updateProtocolHint);
+    $('cfgBaseUrl').addEventListener('input', function () {
+      updateProtocolHint();
+      scheduleUrlPreview();
+    });
     $('cfgModel').addEventListener('input', function () {
       updateProtocolHint();
       highlightActiveModel();
+      scheduleUrlPreview();
     });
 
     bindPasswordToggle('cfgApiKey', 'toggleApiKey');
@@ -3847,6 +4474,8 @@ select:focus { border-color: var(--accent); }
     bindLogs();
     bindMemory();
     bindPersona();
+    bindConnectQq();
+    bindNav();
 
     var saved = loadConnection();
     state.backend = saved.backend || DEFAULT_BACKEND;
@@ -3858,7 +4487,7 @@ select:focus { border-color: var(--accent); }
         .then(function (res) { enterConsole(res.data || {}); })
         .catch(function (err) {
           if (err.status === 401) {
-            showConnect('密钥不正确或已失效，请重新填写');
+            showConnect('密钥不正确。后端 config.properties 里的 web.secret 留空时，这个框也要留空');
           } else if (err.status === 0) {
             showConnect('连不上这个地址：' + state.backend);
           } else {

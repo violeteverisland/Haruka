@@ -47,7 +47,8 @@
 | `WebConsole.java` | **只有 HTTP API**，不提供页面也不依赖页面 |
 | `Log.java` / `RuntimeStatus.java` | 自带日志（含环形缓冲）+ 运行状态 |
 | `webui/index.html` | **独立的前端页面**，单文件、零依赖，可 `file://` 直接打开 |
-| `config.properties` | 配置模板（全 `CHANGE_ME`，可安全提交） |
+| `config.example.properties` | **配置模板**（全是 `CHANGE_ME` / 空值，可安全提交） |
+| `config.properties` | **你自己那份**（复制模板而来，在 `.gitignore` 里，不进仓库） |
 | `LICENSE` | MIT |
 
 ## 前置
@@ -58,12 +59,34 @@
 
 ## 三步跑起来
 
-### 1. 填配置 `config.properties`
+### 1. 准备配置
 
-必须改两项：
+```bat
+copy config.example.properties config.properties
+```
+```sh
+cp config.example.properties config.properties
+```
 
-- `server.access_token=CHANGE_ME` → 随便写一串，**和 SnowLuma 里填的必须一模一样**
-- `llm.api_key=CHANGE_ME` → 你的大模型 API Key
+**为什么要复制一份**：`server.access_token` 首次启动会自动生成并**写回配置文件**，而 `llm.api_key` 也在里面。所以模板必须是独立的 `config.example.properties`，你自己那份 `config.properties` 则被 `.gitignore` 挡着 —— 否则一个 `git add` 就会把凭据推进仓库。
+
+必须改的只有一项：
+
+- `llm.api_key` → 你的大模型 API Key
+
+**`server.access_token` 留空就行** —— 首次启动会自动生成一串随机凭据，写回配置文件，并在启动日志里用醒目的块打印出来：
+
+```
+================== 首次启动：已生成连接凭据 ==================
+  server.access_token = <一串 32 位随机凭据>
+  把它原样填进 SnowLuma「反向 WebSocket」的 Access Token。
+  已写回配置文件，以后不用再管：config.properties
+==============================================================
+```
+
+把那串抄进 SnowLuma 即可，**不需要你自己想一个**。第二次启动不会重新生成。
+
+> 为什么不让用户猜、也不给个默认值？因为 `server.host` 默认是 `0.0.0.0`。一个写在开源仓库里的默认口令等于没有口令 —— 谁都能伪装成 SnowLuma 连上你的 18080。所以模板里留空，启动时现生成。
 
 按需改：`llm.provider`（`openai` 或 `gemini`）、`llm.base_url`、`llm.model`、`llm.system_prompt_file`（人设文件，见下）。
 
@@ -79,22 +102,40 @@
 ```bat
 build.bat
 ```
+```sh
+./build.sh
+```
 
-成功后产物是 `target\haruka.jar`。
+成功后产物是 `target/haruka.jar`。
 
 ### 3. 启动
 
 ```bat
 run.bat
 ```
+```sh
+./run.sh
+```
 
 | 跑法 | 命令 |
 | --- | --- |
-| 机器人 + 控制接口 | `run.bat` |
+| 机器人 + 控制接口 | `run.bat` / `./run.sh` |
 | **纯机器人**（不开任何 HTTP 端口） | 配置里 `web.enabled=false` |
-| **只跑控制接口**（不连 QQ、不占 18080） | `run.bat config.properties --web-only` |
-| 指定配置文件 | `run.bat my.properties` |
+| **只跑控制接口**（不连 QQ、不占 18080） | `run.bat config.properties --web-only`（Linux 同理，只是多个参数） |
+| 指定配置文件 | `run.bat my.properties` / `./run.sh my.properties` |
 | 打开调试日志 | 追加 `--debug` |
+
+两个脚本都**先找 `target/haruka.jar`、再找同级的 `haruka.jar`** —— 所以源码布局和发布包布局（jar 和脚本平铺在一起）都能直接用。
+
+### 跑起来之后
+
+浏览器打开 **`http://127.0.0.1:18081`** 就是控制台。
+
+前端**不需要单独部署** —— 页面已经打进 jar 了。后端会先看 `web.static_dir` 指的磁盘目录，目录不存在就自动改用 jar 内置的那一份。所以哪怕只有一个裸 jar，控制台也是可用的；反过来，你把 `webui/` 放在工作目录里就能不重新打包地替换界面。
+
+> 这也意味着**不需要为不同平台分别编译**：Java 字节码与平台无关，而 SQLite 的原生库（Windows / Linux / **Alpine(musl)** / macOS / FreeBSD，含 x86_64、aarch64、armv7、riscv64）全都在同一个 jar 里。同一个 jar 直接就能在 Ubuntu 和 Windows 上跑，区别只有启动脚本用 `.sh` 还是 `.bat`。
+>
+> 唯一需要分平台的场景是**想连 JRE 一起打包**（让用户不必自己装 Java 17），那才需要 `jpackage` / `jlink` 各平台各打一份。
 
 ## 配置怎么改
 
@@ -275,7 +316,7 @@ QQ 的合并转发在消息事件里**只有一个 id**（`[CQ:forward,id=...]`�
 1. 查本机局域网 IP：`ipconfig`，找 `IPv4 地址`（例如 `192.168.1.5`）。SnowLuma 和本程序在**同一台机器**上就写 `127.0.0.1`。
 2. 在 SnowLuma 里加一个 **反向 WebSocket** 连接：
    - 地址：`ws://192.168.1.5:18080/onebot/v11/ws`
-   - Access Token：和 `server.access_token` 完全一致
+   - Access Token：填**启动日志里打印的那一串**（也就是 `config.properties` 里 `server.access_token` 的值）；如果你是全新配置，先启动一次 haruka，它会自己生成并打印出来
 3. SnowLuma 连上后，日志会打印：
 
 ```

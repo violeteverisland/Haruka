@@ -3,10 +3,14 @@ target/
 *.class
 *.log
 
-# 本地配置：这些文件里有真实 API Key / access_token，绝对不要提交。
-# 约定：你自己用的配置文件名里多带一段（例如 config.local.properties）；
-# 模板 config.properties 不匹配下面这条规则，所以它照常进仓库。
+# 本地配置：真实 API Key / access_token 都在里面，绝对不要提交。
+# 仓库里的模板是 config.example.properties；你复制出来的 config.properties
+# 被下面这条挡住。必须挡住 —— 首次启动会把生成的 access_token 写回这个文件，
+# 只要它被跟踪，凭据迟早会被 commit 进去。
+config.properties
 config.*.properties
+# 模板必须能进仓库（上面那条通配符会连它一起挡掉，所以这里再放行）
+!config.example.properties
 
 # 人设：这是你自己的角色设定，不该进公开仓库。
 # 仓库里给的是 persona.example.md（示例），复制一份改名即可。

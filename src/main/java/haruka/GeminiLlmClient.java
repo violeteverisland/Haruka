@@ -121,14 +121,24 @@ public final class GeminiLlmClient implements LlmClient {
 
     @Override
     public List<String> listModels() throws Exception {
+        return listModels(cfg.llmBaseUrl, cfg.llmApiKey, cfg.llmTimeoutSeconds);
+    }
+
+    /**
+     * 用显式参数列模型。
+     *
+     * <p>控制台「拉取模型列表」走这条 —— 用户在表单里刚敲的 provider / base_url / key
+     * 还没保存也能立刻测，不必先保存再测（那个来回很容易让人以为功能坏了）。
+     */
+    static List<String> listModels(String baseUrl, String apiKey, int timeoutSeconds) throws Exception {
         List<String> names = new ArrayList<>();
         String pageToken = null;
         for (int page = 0; page < MAX_PAGES; page++) {
-            String url = modelsUrl(cfg.llmBaseUrl) + "?pageSize=" + PAGE_SIZE;
+            String url = modelsUrl(baseUrl) + "?pageSize=" + PAGE_SIZE;
             if (pageToken != null && !pageToken.isEmpty()) {
                 url += "&pageToken=" + URLEncoder.encode(pageToken, StandardCharsets.UTF_8);
             }
-            JsonNode root = JsonHttp.getJson(url, headers(), cfg.llmTimeoutSeconds, "Gemini");
+            JsonNode root = JsonHttp.getJson(url, authHeaders(apiKey), timeoutSeconds, "Gemini");
             for (JsonNode node : root.path("models")) {
                 String name = bareModel(node.path("name").asText(""));
                 if (name.isEmpty()) {
@@ -175,10 +185,15 @@ public final class GeminiLlmClient implements LlmClient {
      * 反代的鉴权方式各家不一，两个头一起发，谁认哪个都行。
      */
     private Map<String, String> headers() {
+        return authHeaders(cfg.llmApiKey);
+    }
+
+    /** 同上，但用显式传入的 key，供控制台"未保存也能测"用。 */
+    private static Map<String, String> authHeaders(String apiKey) {
         Map<String, String> headers = new LinkedHashMap<>();
-        if (!cfg.llmApiKey.isBlank()) {
-            headers.put("x-goog-api-key", cfg.llmApiKey);
-            headers.put("Authorization", "Bearer " + cfg.llmApiKey);
+        if (apiKey != null && !apiKey.isBlank()) {
+            headers.put("x-goog-api-key", apiKey);
+            headers.put("Authorization", "Bearer " + apiKey);
         }
         return headers;
     }

@@ -5,6 +5,9 @@
 *.bat text eol=crlf
 *.cmd text eol=crlf
 
+# Shell 脚本必须保持 LF —— 存成 CRLF 的话 Linux 会报 "bad interpreter"
+*.sh text eol=lf
+
 # 源码和文档用 LF
 *.java text eol=lf
 *.md text eol=lf
