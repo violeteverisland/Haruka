@@ -1,0 +1,25 @@
+# 构建产物
+target/
+*.class
+*.log
+
+# 本地配置：这些文件里有真实 API Key / access_token，绝对不要提交。
+# 约定：你自己用的配置文件名里多带一段（例如 config.local.properties）；
+# 模板 config.properties 不匹配下面这条规则，所以它照常进仓库。
+config.*.properties
+
+# 人设：这是你自己的角色设定，不该进公开仓库。
+# 仓库里给的是 persona.example.md（示例），复制一份改名即可。
+haruka.md
+# 控制台保存人设时留下的自动备份
+*.bak-*
+
+# 改名前的旧产物备份
+backup/
+
+# 长期记忆数据库：这是她和你的聊天数据，属于个人数据，不该进版本库
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm

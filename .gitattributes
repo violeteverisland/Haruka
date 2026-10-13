@@ -1,0 +1,12 @@
+# 统一换行符，避免跨平台 diff 噪音
+* text=auto
+
+# Windows 脚本必须保持 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# 源码和文档用 LF
+*.java text eol=lf
+*.md text eol=lf
+*.html text eol=lf
+*.xml text eol=lf

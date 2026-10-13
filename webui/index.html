@@ -1,0 +1,3881 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>HARUKA 控制台</title>
+<style>
+/* ============================================================
+   HARUKA 控制台 —— 单文件页面，无任何外部资源
+   mihomo webui 模式：页面与后端完全解耦，自己填「后端地址 + 密钥」
+   设计取向：浅色、单色主色（深青）、细分隔线、信息密度优先
+   ============================================================ */
+
+:root {
+  --bg: #f5f6f7;
+  --panel: #ffffff;
+  --line: #e3e6e8;
+  --line-soft: #eceef0;
+  --text: #1f2328;
+  --text-2: #4a5259;
+  --muted: #7b848c;
+  --muted-2: #98a1a8;
+  --accent: #0f766e;
+  --accent-hover: #115e59;
+  --accent-soft: #f0fdfa;
+  --accent-line: #99f6e4;
+  --danger: #b42318;
+  --danger-soft: #fef3f2;
+  --danger-line: #fecdca;
+  --warn: #b54708;
+  --warn-soft: #fffaeb;
+  --warn-line: #fedf89;
+  --ok: #15803d;
+  --ok-soft: #f0fdf4;
+  --ok-line: #bbf7d0;
+  --info: #0b6bcb;
+  --info-soft: #e8f1fb;
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.hidden { display: none !important; }
+.mono { font-family: var(--mono); }
+.small { font-size: 11.5px; }
+.pre { white-space: pre-wrap; word-break: break-word; }
+.err-text { color: var(--danger); }
+
+/* ---------------- 表单控件 ---------------- */
+
+input[type="text"],
+input[type="password"],
+input[type="number"],
+textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid #d5d9dd;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+}
+
+textarea { resize: vertical; min-height: 62px; }
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="number"]:focus,
+textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(15, 118, 110, .12);
+}
+
+input::placeholder, textarea::placeholder { color: #a8b0b6; }
+
+input[type="text"].mono,
+input[type="password"].mono,
+.model-chip { font-family: var(--mono); }
+
+select {
+  padding: 4px 6px;
+  border: 1px solid #d5d9dd;
+  border-radius: 5px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  outline: none;
+}
+select:focus { border-color: var(--accent); }
+
+/* ---------------- 按钮 ---------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid #d5d9dd;
+  border-radius: 6px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.btn:hover:not(:disabled) { background: #f2f4f5; border-color: #c3c9ce; }
+.btn:disabled { opacity: .55; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+.btn-slim { padding: 5px 10px; font-size: 12px; }
+.btn-block { width: 100%; }
+
+/* ---------------- 连接设置页 ---------------- */
+
+.connect-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.connect-card {
+  width: 100%;
+  max-width: 380px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 28px 24px 20px;
+  box-shadow: 0 1px 3px rgba(16, 24, 40, .05);
+}
+
+.connect-title {
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  color: var(--accent);
+}
+
+.connect-sub {
+  font-size: 12px;
+  color: var(--muted);
+  margin: 2px 0 20px;
+}
+
+.connect-card .field-label { margin-bottom: 6px; }
+
+.connect-error {
+  min-height: 18px;
+  margin-top: 10px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--danger);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.connect-note {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line-soft);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+/* ---------------- 控制台骨架 ---------------- */
+
+#consoleView {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.topbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 50px;
+  padding: 0 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--line);
+}
+
+.brand {
+  flex: none;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .16em;
+  color: var(--accent);
+}
+
+.topbar-right {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.topbar-backend {
+  font-size: 11.5px;
+  color: var(--muted);
+  max-width: 46vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 重启提示横幅 */
+.banner {
+  flex: none;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 16px;
+  background: var(--warn-soft);
+  border-bottom: 1px solid var(--warn-line);
+  color: var(--warn);
+  font-size: 12.5px;
+}
+.banner .banner-body { flex: 1; }
+.banner-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 5px; }
+.chip {
+  font-family: var(--mono);
+  font-size: 11.5px;
+  background: #fff;
+  border: 1px solid var(--warn-line);
+  border-radius: 4px;
+  padding: 0 6px;
+}
+
+.layout {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  padding: 14px 16px;
+}
+
+.col-left, .col-right { min-width: 0; }
+
+/* ---------------- 卡片 ---------------- */
+
+.card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 13px 15px 15px;
+  margin-bottom: 14px;
+}
+.card:last-child { margin-bottom: 0; }
+
+.card-title {
+  margin: 0 0 12px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+
+/* ---------------- 字段 ---------------- */
+
+.field { margin-bottom: 12px; }
+.field:last-child { margin-bottom: 0; }
+
+.field-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-2);
+  margin-bottom: 5px;
+}
+
+.hint {
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+
+.row-inline {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.row-inline > input { flex: 1; min-width: 0; }
+
+/* ---------------- 分段控件（provider） ---------------- */
+
+.seg {
+  display: inline-flex;
+  border: 1px solid #d5d9dd;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.seg-item {
+  position: relative;
+  padding: 6px 14px;
+  font-size: 12.5px;
+  color: var(--text-2);
+  background: #fff;
+  cursor: pointer;
+  user-select: none;
+}
+.seg-item + .seg-item { border-left: 1px solid #d5d9dd; }
+.seg-item:hover { background: #f6f8f8; }
+.seg-item.active { background: var(--accent); color: #fff; }
+.seg-item input { position: absolute; opacity: 0; width: 0; height: 0; pointer-events: none; }
+
+/* ---------------- 开关 ---------------- */
+
+.switch-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.switch-label { font-size: 12.5px; font-weight: 500; font-family: var(--mono); }
+
+.switch {
+  position: relative;
+  display: inline-block;
+  flex: none;
+  width: 34px;
+  height: 19px;
+}
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch .track {
+  position: absolute;
+  inset: 0;
+  background: #cfd4d8;
+  border-radius: 999px;
+  transition: background .12s;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform .12s;
+}
+.switch input:checked + .track { background: var(--accent); }
+.switch input:checked + .track::after { transform: translateX(15px); }
+.switch input:focus-visible + .track { box-shadow: 0 0 0 3px rgba(15, 118, 110, .2); }
+
+/* ---------------- 徽章 ---------------- */
+
+.badge {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 0 6px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f7f8f8;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.badge-on { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.badge-off { background: #f7f8f8; border-color: var(--line); color: var(--muted); }
+.badge-warn { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
+
+/* ---------------- 键值行 / 统计 ---------------- */
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--line-soft);
+}
+.kv:last-child { border-bottom: none; }
+.kv-k { flex: none; color: var(--muted); }
+.kv-v { text-align: right; word-break: break-all; }
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  margin: 10px 0 8px;
+}
+.stat {
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  padding: 7px 6px;
+  text-align: center;
+  background: #fbfcfc;
+}
+.stat-num { font-family: var(--mono); font-size: 16px; font-weight: 600; line-height: 1.3; }
+.stat-lab { font-size: 11px; color: var(--muted); }
+
+/* 连接状态指示 */
+.conn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 11px;
+  border-radius: 6px;
+  border: 1px solid;
+  font-size: 12.5px;
+  font-weight: 600;
+  transition: color .12s, background .12s, border-color .12s;
+}
+.conn.on { color: var(--accent); background: var(--accent-soft); border-color: var(--accent-line); }
+.conn.off { color: var(--muted); background: #f7f8f8; border-color: var(--line); }
+.dot {
+  flex: none;
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+/* ---------------- 提示框 ---------------- */
+
+.alert {
+  border: 1px solid;
+  border-radius: 6px;
+  padding: 8px 11px;
+  font-size: 12.5px;
+  margin-top: 10px;
+}
+.alert-ok { background: var(--ok-soft); border-color: var(--ok-line); color: var(--ok); }
+.alert-err { background: var(--danger-soft); border-color: var(--danger-line); color: var(--danger); }
+.alert-warn { background: var(--warn-soft); border-color: var(--warn-line); color: var(--warn); }
+.alert-info { background: #f0f9ff; border-color: #bae6fd; color: #075985; }
+.alert .alert-title { font-weight: 600; margin-bottom: 2px; }
+.alert .mono { font-size: 11.5px; }
+
+/* ---------------- 模型候选 ---------------- */
+
+.model-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+  max-height: 116px;
+  overflow: auto;
+}
+.model-list:empty { display: none; }
+
+.model-chip {
+  font-size: 11.5px;
+  padding: 2px 9px;
+  border: 1px solid #d5d9dd;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--text-2);
+  cursor: pointer;
+  transition: background .12s, border-color .12s, color .12s;
+}
+.model-chip:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.model-chip.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+/* ---------------- 长期记忆 ---------------- */
+
+.btn-xs { padding: 3px 8px; font-size: 11.5px; border-radius: 5px; }
+
+.mem-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 18px;
+  padding: 2px 0 0;
+  font-size: 12px;
+  color: var(--text-2);
+}
+.mem-stats b { font-family: var(--mono); font-weight: 600; color: var(--text); }
+
+.mem-path {
+  display: block;
+  width: 100%;
+  margin-top: 3px;
+  padding: 3px 7px;
+  border: 1px solid var(--line-soft);
+  border-radius: 4px;
+  background: #f7f8f8;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.5;
+  text-align: left;
+  word-break: break-all;
+  cursor: pointer;
+  transition: border-color .12s, color .12s;
+}
+.mem-path:hover { border-color: var(--accent); color: var(--accent); }
+
+.mem-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin: 10px 0 8px;
+}
+.mem-toolbar select { max-width: 200px; }
+.mem-search { flex: 1; min-width: 130px; }
+
+.mem-list {
+  max-height: 300px;
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #fcfcfd;
+}
+.mem-list:empty { display: none; }
+
+.mem-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  font-size: 12.5px;
+}
+.mem-row:last-child { border-bottom: none; }
+.mem-row:hover { background: #fff; }
+
+.mem-main { flex: 1; min-width: 0; }
+.mem-content { white-space: pre-wrap; word-break: break-word; }
+
+.mem-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+  margin-top: 3px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+}
+.mem-meta .badge { font-size: 10px; }
+
+.mem-actions {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--sans);
+}
+.mem-actions .hint { margin: 0; white-space: nowrap; }
+
+.mem-empty {
+  padding: 16px 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted-2);
+}
+
+.mem-form {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #fafbfb;
+}
+.mem-form .field { margin-bottom: 10px; }
+.mem-form-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
+
+.badge-scope { background: #f2f4f5; border-color: var(--line); color: var(--text-2); font-family: var(--mono); }
+.badge-auto { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
+.badge-console { background: var(--info-soft); border-color: #bae6fd; color: var(--info); }
+.badge-import { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
+
+/* 记忆配置区（卡片内可编辑部分） */
+.mem-config {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.mem-config-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .05em;
+  margin-bottom: 8px;
+}
+.cfg-static {
+  padding: 7px 9px;
+  border: 1px dashed var(--line);
+  border-radius: 6px;
+  background: #fafbfb;
+  color: var(--text-2);
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+/* ---------------- 人设 ---------------- */
+
+.persona-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12.5px;
+  color: var(--text-2);
+}
+.persona-path { margin-top: 0; }
+
+.persona-inline {
+  margin-top: 10px;
+  padding: 8px 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #fafbfb;
+}
+.persona-inline-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.persona-inline-text {
+  margin: 0;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--text-2);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 120px;
+  overflow: auto;
+}
+
+.persona-text {
+  min-height: 380px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  tab-size: 2;
+}
+
+.persona-foot {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+}
+#personaDirty { color: var(--warn); }
+
+/* ---------------- 画图 / 说明块 ---------------- */
+
+.draw-notes, .note-box {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #fafbfb;
+  font-size: 12px;
+  line-height: 1.65;
+  color: var(--text-2);
+}
+.draw-notes-title, .note-box-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+.draw-notes ul, .note-box ul { margin: 0; padding-left: 18px; }
+.draw-notes li, .note-box li { margin-bottom: 2px; }
+.draw-notes li:last-child, .note-box li:last-child { margin-bottom: 0; }
+
+/* 卡片内部的小节标题 */
+.sub-title {
+  margin: 16px 0 8px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  letter-spacing: .02em;
+}
+
+/* ---------------- 模型自测 ---------------- */
+
+.test-result { margin-top: 10px; }
+
+.test-meta {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 5px;
+}
+
+.test-reply {
+  margin: 0;
+  padding: 9px 11px;
+  background: #fafbfb;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 220px;
+  overflow: auto;
+}
+
+/* 完整链路自测：注入 / 抽取结果 */
+.test-block { margin-top: 9px; }
+.test-block-title {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.test-block-title b { font-family: var(--mono); color: var(--text); }
+.test-block-empty { font-size: 11.5px; color: var(--muted-2); }
+
+.test-mem-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  max-height: 150px;
+  overflow: auto;
+  border: 1px solid var(--line-soft);
+  border-radius: 6px;
+  background: #fcfcfd;
+}
+.test-mem-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 7px;
+  padding: 3px 9px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--line-soft);
+}
+.test-mem-list li:last-child { border-bottom: none; }
+.test-mem-list .mem-id { flex: none; font-family: var(--mono); font-size: 10.5px; color: var(--muted-2); }
+.test-mem-list .mem-text { min-width: 0; word-break: break-word; }
+.test-mem-list .mem-tag {
+  flex: none;
+  margin-left: auto;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+/* ---------------- 日志面板 ---------------- */
+
+.log-panel {
+  display: flex;
+  flex-direction: column;
+  position: sticky;
+  top: 0;
+  height: calc(100vh - 136px);
+  min-height: 260px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.log-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 8px 11px;
+  border-bottom: 1px solid var(--line-soft);
+  background: #fcfcfd;
+}
+
+.log-title { font-size: 12px; font-weight: 600; letter-spacing: .05em; color: var(--muted); }
+
+.log-stream-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #f7f8f8;
+}
+.log-stream-state.live { color: var(--accent); border-color: var(--accent-line); background: var(--accent-soft); }
+.log-stream-state.retry { color: var(--warn); border-color: var(--warn-line); background: var(--warn-soft); }
+.log-stream-state .dot { width: 6px; height: 6px; }
+
+.spacer { flex: 1; }
+
+.chk {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--text-2);
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.chk input { width: auto; margin: 0; accent-color: var(--accent); cursor: pointer; }
+
+.log-list {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 4px 0 8px;
+  background: #fff;
+}
+
+.log-empty {
+  padding: 18px 14px;
+  font-size: 12px;
+  color: var(--muted-2);
+  text-align: center;
+}
+
+.log-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 1px 12px;
+  font-family: var(--mono);
+  font-size: 12px;
+  line-height: 1.65;
+}
+.log-row:hover { background: #fafbfb; }
+
+.log-time { flex: none; color: var(--muted-2); }
+.log-name {
+  flex: none;
+  max-width: 132px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #b3babf;
+}
+.log-msg { flex: 1; min-width: 0; white-space: pre-wrap; word-break: break-word; color: #26292d; }
+
+.lv {
+  flex: none;
+  width: 48px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: .02em;
+  border-radius: 3px;
+  padding: 0 0 1px;
+}
+.lv-DEBUG { background: #f1f3f4; color: #6b7378; }
+.lv-INFO  { background: var(--info-soft); color: var(--info); }
+.lv-WARN  { background: #fff4e5; color: var(--warn); }
+.lv-ERROR { background: #fdecea; color: var(--danger); }
+
+/* 日志消息里的标签着色，便于扫读 */
+.tag-recv  { color: var(--info);   font-weight: 600; }
+.tag-reply { color: var(--accent); font-weight: 600; }
+.tag-fail  { color: var(--danger); font-weight: 600; }
+
+/* ---------------- 底部操作条 ---------------- */
+
+.actionbar {
+  flex: none;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 9px 16px;
+  background: var(--panel);
+  border-top: 1px solid var(--line);
+}
+.actionbar-hint {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--muted-2);
+}
+.actionbar input[type="text"] { width: 150px; }
+
+/* ---------------- 浮动提示 ---------------- */
+
+#toastArea {
+  position: fixed;
+  right: 16px;
+  bottom: 62px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 10px;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--muted);
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, .10);
+  font-size: 12.5px;
+}
+.toast-ok { border-left-color: var(--accent); }
+.toast-err { border-left-color: var(--danger); }
+.toast-warn { border-left-color: var(--warn); }
+.toast-body { flex: 1; white-space: pre-wrap; word-break: break-word; }
+.toast-close {
+  flex: none;
+  border: none;
+  background: none;
+  padding: 0 2px;
+  color: var(--muted-2);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+.toast-close:hover { color: var(--text); }
+
+/* ---------------- 窄屏 ---------------- */
+
+@media (max-width: 1000px) {
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .log-panel { position: static; height: 62vh; }
+  .log-name { max-width: 96px; }
+}
+
+@media (max-width: 520px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr); }
+  .actionbar-hint { display: none; }
+  .log-time { display: none; }
+  .topbar-backend { max-width: 34vw; }
+}
+</style>
+</head>
+<body>
+
+<!-- ==================== 连接设置页 ==================== -->
+<div class="connect-wrap" id="connectView">
+  <form class="connect-card" id="connectForm" autocomplete="off">
+    <div class="connect-title">HARUKA</div>
+    <div class="connect-sub">连接到 haruka 后端</div>
+
+    <label class="field-label" for="connectBackend">后端地址</label>
+    <input type="text" id="connectBackend" class="mono" placeholder="http://127.0.0.1:18081" spellcheck="false">
+    <div class="hint">例如 http://127.0.0.1:18081；不写协议时按 http:// 处理。</div>
+
+    <div style="height:12px"></div>
+
+    <label class="field-label" for="connectSecret">密钥</label>
+    <div class="row-inline">
+      <input type="password" id="connectSecret" class="mono" autocomplete="new-password">
+      <button class="btn btn-slim" id="toggleConnectSecret" type="button">显示</button>
+    </div>
+
+    <div style="height:14px"></div>
+    <button class="btn btn-primary btn-block" id="connectBtn" type="submit">连接</button>
+    <div class="connect-error" id="connectError" aria-live="polite"></div>
+
+    <div class="connect-note">
+      haruka 的配置也可以直接手改 config.properties 文件，改完在控制台点「重新加载配置」即可生效。
+    </div>
+  </form>
+</div>
+
+<!-- ==================== 控制台 ==================== -->
+<div id="consoleView" class="hidden">
+
+  <header class="topbar">
+    <div class="brand">HARUKA</div>
+    <div class="topbar-right">
+      <span class="topbar-backend mono" id="topbarBackend">-</span>
+      <button class="btn btn-slim" id="switchBackendBtn" type="button">切换后端</button>
+    </div>
+  </header>
+
+  <!-- 保存后需要重启才生效的项 -->
+  <div class="banner hidden" id="restartBanner">
+    <div class="banner-body">
+      <b>以下改动需要重启服务才生效：</b>
+      <div class="banner-chips" id="restartChips"></div>
+    </div>
+    <button class="btn btn-slim" id="restartBannerClose" type="button">知道了</button>
+  </div>
+
+  <div class="layout">
+
+    <!-- ---------------- 左栏 ---------------- -->
+    <div class="col-left">
+
+      <!-- 运行状态 -->
+      <section class="card">
+        <h2 class="card-title">运行状态</h2>
+        <div class="conn off" id="connState">
+          <span class="dot"></span>
+          <span id="connText">正在获取状态…</span>
+        </div>
+
+        <div class="alert alert-warn hidden" id="webOnlyAlert">
+          <div class="alert-title">后端处于「仅控制台」模式</div>
+          <div>机器人本体没有在运行，收不到也回不了 QQ 消息；改配置、看日志仍然可用。</div>
+        </div>
+
+        <div class="stats">
+          <div class="stat"><div class="stat-num" id="countReceived">0</div><div class="stat-lab">收到</div></div>
+          <div class="stat"><div class="stat-num" id="countReplied">0</div><div class="stat-lab">已回复</div></div>
+          <div class="stat"><div class="stat-num" id="countFailed">0</div><div class="stat-lab">失败</div></div>
+        </div>
+
+        <div class="kv"><span class="kv-k">QQ 号</span><span class="kv-v mono" id="selfId">-</span></div>
+        <div class="kv"><span class="kv-k">昵称</span><span class="kv-v" id="nickname">-</span></div>
+        <div class="kv"><span class="kv-k">远端地址</span><span class="kv-v mono" id="remoteAddress">-</span></div>
+        <div class="kv"><span class="kv-k">运行时长</span><span class="kv-v" id="uptime">-</span></div>
+        <div class="kv"><span class="kv-k">后端模式</span><span class="kv-v" id="backendMode">-</span></div>
+        <div class="kv"><span class="kv-k">上次重载配置</span><span class="kv-v" id="reloadedAt">尚未重载</span></div>
+        <div class="kv"><span class="kv-k">监听地址</span><span class="kv-v mono" id="wsAddress">-</span></div>
+        <div class="kv"><span class="kv-k">控制台地址</span><span class="kv-v mono" id="webAddress">-</span></div>
+        <div class="kv"><span class="kv-k">后端</span><span class="kv-v mono" id="backendVersion">-</span></div>
+        <div class="kv"><span class="kv-k">当前协议</span><span class="kv-v mono" id="curProvider">-</span></div>
+        <div class="kv"><span class="kv-k">当前模型</span><span class="kv-v mono" id="curModel">-</span></div>
+        <div class="kv"><span class="kv-k">人设</span><span class="kv-v small" id="curPersona">-</span></div>
+        <div class="kv"><span class="kv-k">画图模型</span><span class="kv-v mono small" id="curImageModel">-</span></div>
+        <div class="kv"><span class="kv-k">主动接话</span><span class="kv-v" id="curProactive">-</span></div>
+        <div class="kv"><span class="kv-k">看头像</span><span class="kv-v" id="curAvatar">-</span></div>
+        <div class="kv"><span class="kv-k">base_url</span><span class="kv-v mono small" id="curBaseUrl">-</span></div>
+        <div class="kv"><span class="kv-k">配置文件</span><span class="kv-v mono small" id="configPath">-</span></div>
+
+        <div class="alert alert-err hidden" id="lastErrorBox">
+          <div class="alert-title">最近错误</div>
+          <div class="mono pre" id="lastErrorText"></div>
+        </div>
+      </section>
+
+      <!-- 模型自测 -->
+      <section class="card">
+        <h2 class="card-title" id="testCardTitle">模型自测</h2>
+        <div class="row-inline">
+          <input type="text" id="testText" value="你好" placeholder="发送给模型的测试文本">
+          <button class="btn btn-slim" id="testBtnInline" type="button">测试</button>
+        </div>
+
+        <div class="grid2" style="margin-top:10px">
+          <div class="field">
+            <label class="field-label" for="testScope">会话 scope</label>
+            <input type="text" id="testScope" class="mono" list="testScopeOptions"
+                   placeholder="留空 = 只测模型" spellcheck="false">
+            <datalist id="testScopeOptions"></datalist>
+          </div>
+          <div class="field">
+            <label class="field-label" for="testSenderId">发送者 QQ 号（可选）</label>
+            <input type="text" id="testSenderId" class="mono" inputmode="numeric" spellcheck="false"
+                   placeholder="例如 123456789">
+          </div>
+        </div>
+
+        <div class="hint">
+          填了 scope 就走完整链路：先按该会话注入长期记忆，再调模型（不经过 QQ 验证记忆是否生效的办法）。
+          填了发送者 QQ 号才能在自测里验证「看头像」和 <span class="mono">[[draw: … | avatar]]</span>。
+        </div>
+
+        <label class="chk" style="margin-top:8px">
+          <input type="checkbox" id="testExtract">
+          <span>同时抽取记忆（额外跑一次抽取并落库，耗时约翻倍）</span>
+        </label>
+
+        <div class="hint" id="testHint">不经过 QQ，直接用后端当前配置请求一次模型。</div>
+        <div class="test-result hidden" id="testResult"></div>
+      </section>
+
+      <!-- LLM 配置 -->
+      <section class="card">
+        <h2 class="card-title">LLM 配置</h2>
+
+        <div class="field">
+          <div class="field-label">协议 provider</div>
+          <div class="seg" id="providerSeg">
+            <label class="seg-item" data-value="openai">
+              <input type="radio" name="provider" value="openai"><span>OpenAI 兼容</span>
+            </label>
+            <label class="seg-item" data-value="gemini">
+              <input type="radio" name="provider" value="gemini"><span>Gemini 原生</span>
+            </label>
+          </div>
+          <div class="hint mono" id="protocolHint" style="color:#4a5259"></div>
+          <div class="hint" id="protocolNote"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgBaseUrl">base_url</label>
+          <input type="text" id="cfgBaseUrl" class="mono" placeholder="http://127.0.0.1:8080">
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgApiKey">
+            api_key
+            <span class="badge" id="apiKeyBadge">未知</span>
+          </label>
+          <div class="row-inline">
+            <input type="password" id="cfgApiKey" class="mono" autocomplete="new-password">
+            <button class="btn btn-slim" id="toggleApiKey" type="button">显示</button>
+          </div>
+          <div class="hint">后端不会下发真实 key。留空表示保持原值不变，填入内容则覆盖。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgModel">model</label>
+          <div class="row-inline">
+            <input type="text" id="cfgModel" class="mono" placeholder="gemini-3.8-flash-low">
+            <button class="btn btn-slim" id="fetchModelsBtn" type="button">拉取模型列表</button>
+          </div>
+          <div class="hint">拉取使用后端<strong>已保存</strong>的 provider / base_url / api_key，改完上面的项请先保存。</div>
+          <div class="model-list" id="modelList"></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgSystemPromptFile">人设文件路径 <span class="mono small" style="color:#98a1a8">llm.system_prompt_file</span></label>
+          <input type="text" id="cfgSystemPromptFile" class="mono" placeholder="haruka.md" spellcheck="false">
+          <div class="hint">留空则只用下面的内联提示；相对路径基于运行目录。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgSystemPrompt">内联补充指令 <span class="mono small" style="color:#98a1a8">llm.system_prompt</span></label>
+          <textarea id="cfgSystemPrompt" rows="4" spellcheck="false"></textarea>
+          <div class="hint">会追加在人设文件后面。</div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="cfgHistoryLimit">history_limit</label>
+            <input type="number" id="cfgHistoryLimit" min="1" step="1">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgTemperature">temperature</label>
+            <input type="number" id="cfgTemperature" min="0" max="2" step="0.1">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgMaxTokens">max_tokens</label>
+            <input type="number" id="cfgMaxTokens" min="1" step="1">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgTimeout">timeout_seconds</label>
+            <input type="number" id="cfgTimeout" min="1" step="1">
+          </div>
+        </div>
+      </section>
+
+      <!-- 人设 -->
+      <section class="card">
+        <h2 class="card-title">人设</h2>
+
+        <div class="persona-status">
+          <span id="personaSummary">正在读取人设…</span>
+          <button class="mem-path persona-path" id="personaPath" type="button" title="点击复制路径">-</button>
+        </div>
+
+        <div class="alert alert-warn hidden" id="personaNoPathAlert">
+          还没配置人设文件路径，请到上面的 LLM 配置里填 <span class="mono">system_prompt_file</span>。
+        </div>
+
+        <div class="alert alert-info hidden" id="personaMissingAlert">
+          人设文件还不存在，保存一次就会创建。
+        </div>
+
+        <div class="persona-inline hidden" id="personaInlineBox">
+          <div class="persona-inline-title">config 里的补充指令（在 LLM 配置里改）</div>
+          <pre class="persona-inline-text" id="personaInlineText"></pre>
+        </div>
+
+        <div class="field" style="margin-top:10px">
+          <textarea id="personaText" class="persona-text" spellcheck="false"
+                    placeholder="# Haruka&#10;&#10;## 基本情况&#10;- 名字：Haruka……"></textarea>
+          <div class="persona-foot">
+            <span class="hint" style="margin:0" id="personaCount">0 字</span>
+            <span class="hint" style="margin:0" id="personaDirty"></span>
+          </div>
+        </div>
+
+        <div class="alert alert-info hidden" id="personaBackupAlert">
+          <div>检测到文件在外部被改过，已把旧版本备份到</div>
+          <button class="mem-path persona-path" id="personaBackupPath" type="button" title="点击复制路径">-</button>
+        </div>
+
+        <div class="mem-toolbar" style="margin:8px 0 0">
+          <button class="btn btn-primary btn-slim" id="personaSaveBtn" type="button">保存人设</button>
+          <button class="btn btn-slim" id="personaReloadBtn" type="button">重新载入</button>
+          <span class="hint" style="margin:0" id="personaSaveHint"></span>
+        </div>
+
+        <div class="hint">
+          改这个文件<strong>保存即生效，不用重启</strong>；保存<strong>以控制台为准</strong> ——
+          若文件在外部被改过，会先自动备份旧版再写入。也可以直接编辑项目里的
+          <span class="mono">haruka.md</span>，后端每 2 秒检查一次，同样会自动生效。
+        </div>
+      </section>
+
+      <!-- 机器人行为 -->
+      <section class="card">
+        <h2 class="card-title">机器人行为</h2>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">private_enabled</div>
+            <div class="hint" style="margin-top:0">允许私聊触发</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgPrivateEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">group_require_at</div>
+            <div class="hint" style="margin-top:0">群聊中要求被叫到（@ 或唤醒词）才响应；关掉等于群里每条消息都回</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgGroupRequireAt"><span class="track"></span></label>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label class="field-label" for="cfgTriggerNames">wake_words</label>
+          <input type="text" id="cfgTriggerNames" class="mono" placeholder="Haruka, haruka, 小春">
+          <div class="hint">唤醒词：正文里出现这些词就叫醒她，<strong>不需要 @</strong>，也不受上面 group_require_at 影响。多个用英文或中文逗号分隔。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgWorkers">workers</label>
+          <input type="number" id="cfgWorkers" min="1" step="1">
+        </div>
+
+        <div class="sub-title">主动接话（不用 @ 也能被唤醒）</div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">proactive_enabled</div>
+            <div class="hint" style="margin-top:0">名字被提到永远会唤醒她；开了这个之后，像提问的群消息也可能让她主动开口</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgProactiveEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">proactive_on_question</div>
+            <div class="hint" style="margin-top:0">只对看起来像提问的消息接话；关掉则任何群消息都可能（务必配合下面的限流）</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgProactiveOnQuestion"><span class="track"></span></label>
+        </div>
+
+        <div class="grid2" style="margin-top:12px">
+          <div class="field">
+            <label class="field-label" for="cfgProactiveCooldown">proactive_cooldown_seconds</label>
+            <input type="number" id="cfgProactiveCooldown" min="0" max="3600" step="1">
+            <div class="hint">同一个群两次主动开口至少隔多少秒</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgProactiveMaxPerHour">proactive_max_per_hour</label>
+            <input type="number" id="cfgProactiveMaxPerHour" min="1" max="120" step="1">
+            <div class="hint">同一个群每小时最多主动开口几次</div>
+          </div>
+        </div>
+
+        <div class="note-box">
+          <div class="note-box-title">这是「便宜版」的主动接话</div>
+          <ul>
+            <li>靠规则 + 限流判断，<strong>不额外调模型</strong>，所以判断不如评分模型准 —— 该接的可能没接、不该接的可能接了。</li>
+            <li>要准就得每条群消息多调一次模型，那个成本高得多。</li>
+            <li>每次触发时后端日志会打出类似
+              <span class="mono">[收到] … ← 主动接话（像提问）</span> 的原因，方便你调。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 长期记忆 -->
+      <section class="card">
+        <h2 class="card-title">长期记忆</h2>
+
+        <div class="alert alert-warn hidden" id="memUnavailableAlert">
+          <div class="alert-title">记忆库不可用（数据库打不开，请看后端日志）</div>
+        </div>
+
+        <div class="alert alert-info hidden" id="memDisabledAlert">
+          长期记忆已在配置里关闭（memory.enabled=false）。
+        </div>
+
+        <div class="mem-stats">
+          <span>记忆总数 <b id="memTotal">-</b></span>
+          <span>注入上限 <b id="memInjectLimit">-</b></span>
+          <span>每会话上限 <b id="memMaxPerScope">-</b></span>
+          <span>自动抽取 <b id="memExtract">-</b></span>
+          <span class="hidden" id="memShown">-</span>
+        </div>
+
+        <div style="margin-top:9px">
+          <span class="hint" style="margin:0">数据库文件（点击复制）</span>
+          <button class="mem-path" id="memDbPath" type="button">-</button>
+        </div>
+
+        <div class="hint">
+          数据库是单个文件：把 <span class="mono">data/haruka.db</span> 和
+          <span class="mono">config.properties</span> 一起拷到另一台机器，她（连同记忆和人设）就还在。
+        </div>
+
+        <div class="mem-toolbar">
+          <select id="memScopeFilter" title="按 scope 过滤">
+            <option value="">全部 scope</option>
+          </select>
+          <input type="text" id="memSearch" class="mem-search" placeholder="搜索记忆内容…" spellcheck="false">
+          <button class="btn btn-slim" id="memRefreshBtn" type="button">刷新</button>
+        </div>
+
+        <div class="mem-list" id="memList"></div>
+
+        <div class="mem-toolbar" style="margin-bottom:0">
+          <button class="btn btn-slim" id="memNewBtn" type="button">新增记忆</button>
+          <button class="btn btn-slim" id="memExportBtn" type="button">导出</button>
+          <button class="btn btn-slim" id="memImportBtn" type="button">导入</button>
+          <select id="memImportMode" title="导入模式">
+            <option value="merge">合并</option>
+            <option value="replace">覆盖</option>
+          </select>
+          <input type="file" id="memImportFile" accept=".json,application/json" class="hidden">
+        </div>
+
+        <div class="mem-form hidden" id="memForm">
+          <div class="mem-form-title" id="memFormTitle">新增记忆</div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="memFormScope">scope</label>
+              <input type="text" id="memFormScope" class="mono" list="memScopeOptions" placeholder="private:123456789" spellcheck="false">
+              <datalist id="memScopeOptions"></datalist>
+            </div>
+            <div class="field">
+              <label class="field-label" for="memFormSubject">subject（可空）</label>
+              <input type="text" id="memFormSubject" class="mono" placeholder="hrk" spellcheck="false">
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="memFormContent">content</label>
+            <textarea id="memFormContent" rows="3" spellcheck="false" placeholder="喜欢喝冰美式"></textarea>
+          </div>
+
+          <div class="row-inline">
+            <button class="btn btn-primary btn-slim" id="memFormSave" type="button">保存</button>
+            <button class="btn btn-slim" id="memFormCancel" type="button">取消</button>
+            <span class="hint" id="memFormHint" style="margin:0"></span>
+          </div>
+        </div>
+
+        <!-- 记忆相关配置：跟底部「保存配置」一起提交 -->
+        <div class="mem-config">
+          <div class="mem-config-title">记忆配置<span class="hint" style="margin:0;font-weight:400">（随底部「保存配置」一起提交）</span></div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">enabled</div>
+              <div class="hint" style="margin-top:0">关闭后完全不碰数据库 · 改动需要重启</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="cfgMemEnabled"><span class="track"></span></label>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">extract_enabled</div>
+              <div class="hint" style="margin-top:0">每轮对话后自动抽取值得长期记住的事</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="cfgMemExtractEnabled"><span class="track"></span></label>
+          </div>
+
+          <div class="field" style="margin-top:12px">
+            <label class="field-label" for="cfgMemDbPath">db_path</label>
+            <input type="text" id="cfgMemDbPath" class="mono" placeholder="data/haruka.db" spellcheck="false">
+            <div class="hint">相对路径基于运行目录 · 改动需要重启</div>
+          </div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="cfgMemInjectLimit">inject_limit</label>
+              <input type="number" id="cfgMemInjectLimit" min="0" max="100" step="1">
+              <div class="hint">每次最多注入几条记忆，0 = 不注入</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cfgMemExtractMinChars">extract_min_chars</label>
+              <input type="number" id="cfgMemExtractMinChars" min="0" max="1000" step="1">
+              <div class="hint">短于这个字数的消息不触发抽取</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cfgMemMinImportance">min_importance</label>
+              <input type="number" id="cfgMemMinImportance" min="0" max="1" step="0.05">
+              <div class="hint">重要性门槛：她自己给每条候选打 0–1 分，低于这个分数一律不记。调高 = 她更挑（0.9 基本只记「非常重要」的）</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="cfgMemMaxPerScope">max_per_scope</label>
+              <input type="number" id="cfgMemMaxPerScope" min="1" max="100000" step="1">
+              <div class="hint">每个会话最多保留多少条</div>
+            </div>
+            <div class="field">
+              <label class="field-label">available</label>
+              <div class="cfg-static" id="cfgMemAvailable">-</div>
+              <div class="hint">只读状态：数据库是否成功打开</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 画图 -->
+      <section class="card">
+        <h2 class="card-title">画图</h2>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">enabled</div>
+            <div class="hint" style="margin-top:0">关闭后模型不会收到画图说明，也不会画</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgImageEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label class="field-label" for="cfgImageModel">model</label>
+          <input type="text" id="cfgImageModel" class="mono" placeholder="gemini-3.1-flash-image" spellcheck="false">
+          <div class="hint">生图模型，例如 <span class="mono">gemini-3.1-flash-image</span></div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgImageSaveDir">save_dir</label>
+          <input type="text" id="cfgImageSaveDir" class="mono" placeholder="data/images" spellcheck="false">
+          <div class="hint">生成的原图存这里，相对路径基于运行目录</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgImageStyle">style</label>
+          <input type="text" id="cfgImageStyle" spellcheck="false" placeholder="anime style, flat illustration">
+          <div class="hint">追加到每张图提示词后面的风格描述，例如 <span class="mono">anime style, flat illustration</span></div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="cfgImageSendMode">send_mode</label>
+            <select id="cfgImageSendMode" style="width:100%">
+              <option value="file">file — 发本地路径（消息小）</option>
+              <option value="base64">base64 — 兼容性更好但消息大三分之一</option>
+            </select>
+            <div class="hint">发图方式</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgImageTimeout">timeout_seconds</label>
+            <input type="number" id="cfgImageTimeout" min="10" max="600" step="1">
+            <div class="hint">生图很慢，超时给宽一点</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgImageMaxPerTurn">max_per_turn</label>
+            <input type="number" id="cfgImageMaxPerTurn" min="1" max="10" step="1">
+            <div class="hint">一轮对话最多画几张</div>
+          </div>
+        </div>
+
+        <div class="draw-notes">
+          <div class="draw-notes-title">画图是怎么工作的</div>
+          <ul>
+            <li>她自己决定要不要画：会在回复里用 <span class="mono">[[draw: 英文画面描述]]</span> 点单，后端把标记换成图片发出去。</li>
+            <li>生成一张要 <strong>十几秒</strong>，所以你会先收到文字、过一会儿才收到图。</li>
+            <li>这段画图能力说明是<strong>程序自动追加</strong>的，不需要写进人设文件。</li>
+            <li>每张图的原始文件都会留在 <span class="mono">save_dir</span> 里。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- 头像 -->
+      <section class="card">
+        <h2 class="card-title">头像</h2>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">enabled</div>
+            <div class="hint" style="margin-top:0">关闭后她看不到任何头像</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgAvatarEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label class="field-label" for="cfgAvatarKeywords">look_keywords</label>
+          <input type="text" id="cfgAvatarKeywords" class="mono" placeholder="头像,长相,样子,照片,自拍" spellcheck="false">
+          <div class="hint">消息里出现这些词就把发送者头像附给模型（逗号分隔）</div>
+        </div>
+
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="cfgAvatarSize">size</label>
+            <input type="number" id="cfgAvatarSize" min="40" max="640" step="1">
+            <div class="hint">qlogo 尺寸档位，常见 40 / 100 / 140 / 640</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgAvatarCacheMinutes">cache_minutes</label>
+            <input type="number" id="cfgAvatarCacheMinutes" min="0" max="10080" step="1">
+            <div class="hint">同一张头像多久内不重复下载</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgAvatarCacheDir">cache_dir</label>
+            <input type="text" id="cfgAvatarCacheDir" class="mono" placeholder="data/avatars" spellcheck="false">
+            <div class="hint">头像缓存目录</div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgAvatarTimeout">timeout_seconds</label>
+            <input type="number" id="cfgAvatarTimeout" min="5" max="120" step="1">
+            <div class="hint">下载头像的超时</div>
+          </div>
+        </div>
+
+        <div class="note-box">
+          <div class="note-box-title">她是怎么「看见」头像的</div>
+          <ul>
+            <li>OneBot 的消息事件里<strong>没有头像图片</strong>，这是标准如此。</li>
+            <li>但 QQ 头像地址是纯拼接的固定地址，不需要调任何接口：
+              <span class="mono">https://q1.qlogo.cn/g?b=qq&amp;nk=&lt;QQ号&gt;&amp;s=&lt;尺寸&gt;</span>，
+              群头像是 <span class="mono">https://p.qlogo.cn/gh/&lt;群号&gt;/&lt;群号&gt;/&lt;尺寸&gt;</span>。</li>
+            <li>消息命中上面的关键词时，后端会抓发送者头像，作为<strong>图片附件</strong>跟这条消息一起发给多模态模型，她这才算真的看得见。</li>
+            <li>画图时她可以写 <span class="mono">[[draw: 描述 | avatar]]</span> 把发送者头像当参考图，
+              <span class="mono">[[draw: 描述 | group]]</span> 用本群群头像（「根据我的头像画」就走这条）。</li>
+            <li>头像是可选的：抓不到就当这次没看见，<strong>不会影响回复</strong>。</li>
+          </ul>
+        </div>
+      </section>
+
+      <!-- OneBot 服务端 -->
+      <section class="card">
+        <h2 class="card-title">OneBot 反向 WS（server）</h2>
+        <div class="grid2">
+          <div class="field">
+            <label class="field-label" for="cfgServerHost">host</label>
+            <input type="text" id="cfgServerHost" class="mono">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgServerPort">port</label>
+            <input type="number" id="cfgServerPort" min="1" max="65535" step="1">
+          </div>
+        </div>
+        <div class="field">
+          <label class="field-label" for="cfgAccessToken">access_token</label>
+          <input type="text" id="cfgAccessToken" class="mono" placeholder="留空表示不校验">
+        </div>
+        <div class="hint">改动监听地址 / 端口通常需要重启服务才生效。</div>
+      </section>
+
+      <!-- 控制台本身 -->
+      <section class="card">
+        <h2 class="card-title">控制台本身（web）</h2>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">enabled</div>
+            <div class="hint" style="margin-top:0">关闭后不再提供 API 与静态页面</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgWebEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="grid2" style="margin-top:12px">
+          <div class="field">
+            <label class="field-label" for="cfgWebHost">host</label>
+            <input type="text" id="cfgWebHost" class="mono">
+          </div>
+          <div class="field">
+            <label class="field-label" for="cfgWebPort">port</label>
+            <input type="number" id="cfgWebPort" min="1" max="65535" step="1">
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgWebSecret">
+            控制台密钥
+            <span class="badge" id="webSecretBadge">未知</span>
+          </label>
+          <div class="row-inline">
+            <input type="password" id="cfgWebSecret" class="mono" autocomplete="new-password">
+            <button class="btn btn-slim" id="toggleWebSecret" type="button">显示</button>
+          </div>
+          <div class="hint">后端不会下发密钥原文：留空表示不修改，填入则覆盖。改完需要重启服务，之后要回「切换后端」用新密钥重新连接。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgStaticDir">static_dir</label>
+          <input type="text" id="cfgStaticDir" class="mono" placeholder="webui">
+          <div class="hint">静态页面目录，留空则只提供 API，不提供页面。</div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ---------------- 右栏：实时日志 ---------------- -->
+    <div class="col-right">
+      <section class="log-panel">
+        <div class="log-head">
+          <span class="log-title">实时日志</span>
+          <span class="log-stream-state" id="streamState">
+            <span class="dot"></span><span id="streamStateText">连接中…</span>
+          </span>
+          <span class="spacer"></span>
+          <select id="levelFilter" title="级别过滤">
+            <option value="ALL">全部级别</option>
+            <option value="INFO">INFO 及以上</option>
+            <option value="WARN">WARN 及以上</option>
+            <option value="ERROR">仅 ERROR</option>
+          </select>
+          <label class="chk"><input type="checkbox" id="autoScrollChk" checked><span>自动滚动</span></label>
+          <button class="btn btn-slim" id="pauseBtn" type="button">暂停接收</button>
+          <button class="btn btn-slim" id="clearBtn" type="button">清空</button>
+        </div>
+        <div class="log-list" id="logList">
+          <div class="log-empty" id="logEmpty">正在加载历史日志…</div>
+        </div>
+      </section>
+    </div>
+
+  </div>
+
+  <!-- ---------------- 底部操作条 ---------------- -->
+  <div class="actionbar">
+    <button class="btn btn-primary" id="saveBtn" type="button">保存配置</button>
+    <button class="btn" id="reloadConfigBtn" type="button" title="让后端从磁盘重新读取 config.properties">重新加载配置</button>
+    <button class="btn" id="refreshBtn" type="button" title="从后端重新读取配置，丢弃表单里未保存的修改">重读表单</button>
+    <button class="btn" id="testBtn" type="button">测试模型</button>
+    <span class="actionbar-hint">测试模型使用后端已保存的配置发送上方输入框里的文本。</span>
+  </div>
+
+</div>
+
+<div id="toastArea"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     常量与工具
+     ============================================================ */
+
+  var LEVELS = ['DEBUG', 'INFO', 'WARN', 'ERROR'];
+  var MAX_ROWS = 800;          // DOM 与内存缓冲区同时保留的最大日志行数
+  var STATUS_INTERVAL = 5000;  // 运行状态轮询间隔
+  var MEM_LIMIT = 200;         // 记忆列表一次拉取多少条
+  var MEM_DEBOUNCE = 300;      // 记忆搜索防抖
+
+  var STORAGE_BACKEND = 'haruka.backend';
+  var STORAGE_SECRET = 'haruka.secret';
+
+  // 从 http(s) 打开时默认连当前源；从本地文件打开时默认连本机控制台端口
+  var DEFAULT_BACKEND = (location.protocol === 'http:' || location.protocol === 'https:')
+    ? location.origin
+    : 'http://127.0.0.1:18081';
+
+  function $(id) { return document.getElementById(id); }
+
+  function escapeHtml(value) {
+    return String(value === null || value === undefined ? '' : value)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  function toInt(value) {
+    var v = parseInt(String(value == null ? '' : value).trim(), 10);
+    return isNaN(v) ? 0 : v;
+  }
+
+  function toFloat(value) {
+    var v = parseFloat(String(value == null ? '' : value).trim());
+    return isNaN(v) ? 0 : v;
+  }
+
+  function formatNumber(n) {
+    var v = Number(n || 0);
+    return isNaN(v) ? '0' : v.toLocaleString('zh-CN');
+  }
+
+  function pad2(x) { return x < 10 ? '0' + x : '' + x; }
+
+  /** 把秒数格式化成「1 天 2 小时 3 分」这种可读形式 */
+  function formatUptime(seconds) {
+    var total = Math.max(0, Math.floor(Number(seconds) || 0));
+    var d = Math.floor(total / 86400);
+    var h = Math.floor((total % 86400) / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    if (d > 0) { return d + ' 天 ' + h + ' 小时 ' + m + ' 分'; }
+    if (h > 0) { return h + ' 小时 ' + m + ' 分'; }
+    if (m > 0) { return m + ' 分 ' + s + ' 秒'; }
+    return s + ' 秒';
+  }
+
+  /** 时间戳 -> HH:mm:ss */
+  function formatClock(ms) {
+    var n = Number(ms);
+    if (!n || isNaN(n)) { return '-'; }
+    var d = new Date(n);
+    if (isNaN(d.getTime())) { return '-'; }
+    return pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  }
+
+  /** 时间戳 -> 本地可读时间 */
+  function formatTime(ms) {
+    var n = Number(ms);
+    if (!n || isNaN(n)) { return '-'; }
+    var d = new Date(n);
+    if (isNaN(d.getTime())) { return '-'; }
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' '
+      + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+
+  /** 后端地址规范化：补协议、去末尾斜杠（保证拼接后不会出现双斜杠） */
+  function normalizeBackend(raw) {
+    var v = String(raw || '').trim();
+    if (!v) { return ''; }
+    if (!/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(v)) { v = 'http://' + v; }
+    return v.replace(/\/+$/, '');
+  }
+
+  /* ============================================================
+     连接信息（localStorage）
+     页面与后端完全解耦：地址和密钥都存在浏览器本地
+     ============================================================ */
+
+  function loadConnection() {
+    var backend = null;
+    var secret = null;
+    try {
+      backend = window.localStorage.getItem(STORAGE_BACKEND);
+      secret = window.localStorage.getItem(STORAGE_SECRET);
+    } catch (e) {
+      // 隐私模式或某些 file:// 场景下 localStorage 不可用，退化成“没存过”
+      backend = null;
+      secret = null;
+    }
+    return { backend: backend, secret: secret };
+  }
+
+  function saveConnection(backend, secret) {
+    try {
+      window.localStorage.setItem(STORAGE_BACKEND, backend);
+      window.localStorage.setItem(STORAGE_SECRET, secret);
+    } catch (e) {
+      // 存不下也不影响本次会话，只是下次要重新填
+    }
+  }
+
+  /* ============================================================
+     请求封装
+     所有请求都指向 <backend>/api/...，并带 Authorization: Bearer <密钥>
+     ============================================================ */
+
+  function ApiError(message, status) {
+    this.name = 'ApiError';
+    this.message = message;
+    this.status = status || 0;
+  }
+  ApiError.prototype = Object.create(Error.prototype);
+
+  /**
+   * @param {string} path   接口路径，例如 '/api/status'
+   * @param {object} [opts] { method, body, ignore401 }
+   * @returns {Promise<object>} 完整信封 { ok, data, ... }
+   */
+  function api(path, opts) {
+    opts = opts || {};
+    var init = {
+      method: opts.method || 'GET',
+      headers: { 'Authorization': 'Bearer ' + (state.secret || '') }
+    };
+    if (opts.body !== undefined) {
+      init.headers['Content-Type'] = 'application/json';
+      init.body = JSON.stringify(opts.body);
+    }
+
+    return fetch(state.backend + path, init).then(function (res) {
+      return res.text().then(function (text) {
+        var payload = null;
+        if (text) {
+          try { payload = JSON.parse(text); } catch (e) { payload = null; }
+        }
+        if (res.status === 401) {
+          if (!opts.ignore401) { showConnect('密钥不正确或已失效，请重新填写'); }
+          throw new ApiError('密钥不正确或已失效', 401);
+        }
+        if (!payload || payload.ok !== true) {
+          var msg = (payload && payload.error) ? payload.error : ('请求失败（HTTP ' + res.status + '）');
+          throw new ApiError(msg, res.status);
+        }
+        return payload;
+      });
+    }, function () {
+      throw new ApiError('连不上这个地址，请确认后端已启动、地址填写正确', 0);
+    });
+  }
+
+  /* ============================================================
+     全局状态
+     ============================================================ */
+
+  var state = {
+    connected: false,
+    backend: '',
+    secret: '',
+    meta: null,
+    statusTimer: null,
+    eventSource: null,
+    lastSeq: 0,          // 已接收的最大 seq，同时作为 SSE 的 after 游标
+    logBuffer: [],       // 内存中的日志（最多 MAX_ROWS 条）
+    autoScroll: true,
+    paused: false,
+    levelFilter: 'ALL',
+    apiKeySet: false,
+    secretSet: false,
+    testPending: false,
+    // 长期记忆面板
+    mem: { loaded: false, entries: [], total: 0, totalAll: 0 },
+    memDebounce: null,
+    memEditingId: 0,
+    // 人设文件
+    persona: { loaded: false, savedText: '', configuredPath: '', resolvedPath: '', exists: false, mtime: 0 }
+  };
+
+  /* ============================================================
+     浮动提示
+     ============================================================ */
+
+  function toast(kind, text, sticky) {
+    var area = $('toastArea');
+    var el = document.createElement('div');
+    el.className = 'toast toast-' + kind;
+
+    var body = document.createElement('div');
+    body.className = 'toast-body';
+    body.textContent = text;
+    el.appendChild(body);
+
+    var close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'toast-close';
+    close.setAttribute('aria-label', '关闭');
+    close.textContent = '\u00d7';
+    close.addEventListener('click', function () { el.remove(); });
+    el.appendChild(close);
+
+    area.appendChild(el);
+    if (!sticky) {
+      setTimeout(function () { el.remove(); }, 5000);
+    }
+    return el;
+  }
+
+  /* ============================================================
+     连接设置页 / 控制台切换
+     ============================================================ */
+
+  function showConnect(message) {
+    if (state.statusTimer) { clearInterval(state.statusTimer); state.statusTimer = null; }
+    closeStream();
+    state.connected = false;
+    $('consoleView').classList.add('hidden');
+    $('connectView').classList.remove('hidden');
+    // 不清 localStorage：只是回到这个页面，方便修改后重连
+    $('connectBackend').value = state.backend || DEFAULT_BACKEND;
+    $('connectSecret').value = state.secret || '';
+    $('connectError').textContent = message || '';
+    setTimeout(function () {
+      try { $('connectBackend').focus(); } catch (e) { /* 忽略 */ }
+    }, 30);
+  }
+
+  function enterConsole(initialStatus) {
+    state.connected = true;
+    $('connectView').classList.add('hidden');
+    $('consoleView').classList.remove('hidden');
+    $('connectError').textContent = '';
+    $('topbarBackend').textContent = state.backend;
+    $('topbarBackend').title = state.backend;
+
+    // 上一个后端的残留信息清干净
+    hideRestartRequired();
+    $('modelList').innerHTML = '';
+    $('testResult').classList.add('hidden');
+    $('testResult').innerHTML = '';
+    $('testScope').value = '';
+    $('testSenderId').value = '';
+    $('testExtract').checked = false;
+    syncTestMode();
+    $('backendVersion').textContent = '-';
+    $('webOnlyAlert').classList.add('hidden');
+
+    resetMemoryPanel();
+    resetPersonaPanel();
+
+    startStatusPolling(initialStatus);
+    loadConfig();
+    loadMeta();
+    startLogs();
+    loadMemories();
+    loadPersona();
+  }
+
+  function tryConnect() {
+    var backend = normalizeBackend($('connectBackend').value);
+    var secret = $('connectSecret').value;
+
+    if (!backend) {
+      $('connectError').textContent = '请填写后端地址';
+      try { $('connectBackend').focus(); } catch (e) { /* 忽略 */ }
+      return;
+    }
+    $('connectBackend').value = backend;  // 回填规范化后的地址
+    state.backend = backend;
+    state.secret = secret;
+    $('connectError').textContent = '';
+
+    var btn = $('connectBtn');
+    btn.disabled = true;
+    btn.textContent = '连接中…';
+
+    // 先用 /api/meta 探一次：它能区分「地址不通」和「密钥不对」，还会回显配置文件路径
+    api('/api/meta', { ignore401: true })
+      .then(function (res) {
+        var meta = res.data || {};
+        state.meta = meta;
+        saveConnection(state.backend, state.secret);
+        toast('ok', '已连接 ' + (meta.name || 'haruka')
+          + (meta.version ? ' ' + meta.version : '')
+          + (meta.configPath ? '\n配置：' + meta.configPath : ''));
+        return api('/api/status', { ignore401: true });
+      })
+      .then(function (res) {
+        enterConsole(res.data || {});
+      })
+      .catch(function (err) {
+        if (err.status === 401) {
+          $('connectError').textContent = '密钥不正确';
+        } else if (err.status === 0) {
+          $('connectError').textContent = '连不上这个地址：' + state.backend;
+        } else {
+          $('connectError').textContent = '连接失败：' + err.message;
+        }
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '连接';
+      });
+  }
+
+  function bindConnect() {
+    $('connectForm').addEventListener('submit', function (ev) {
+      ev.preventDefault();  // 回车即提交
+      tryConnect();
+    });
+
+    bindPasswordToggle('connectSecret', 'toggleConnectSecret');
+
+    $('switchBackendBtn').addEventListener('click', function () {
+      // 只回到连接设置页，不清除已保存的地址与密钥
+      showConnect('');
+    });
+  }
+
+  /* ============================================================
+     运行状态
+     ============================================================ */
+
+  function startStatusPolling(initialStatus) {
+    if (state.statusTimer) { clearInterval(state.statusTimer); state.statusTimer = null; }
+    if (initialStatus) { renderStatus(initialStatus); } else { refreshStatus(); }
+    state.statusTimer = setInterval(refreshStatus, STATUS_INTERVAL);
+  }
+
+  function refreshStatus() {
+    if (!state.connected) { return; }
+    api('/api/status', { ignore401: true })
+      .then(function (res) { renderStatus(res.data || {}); })
+      .catch(function (err) {
+        if (err.status === 401) {
+          showConnect('密钥不正确或已失效，请重新填写');
+        } else {
+          $('connState').className = 'conn off';
+          $('connText').textContent = '连不上后端';
+        }
+      });
+  }
+
+  function renderStatus(d) {
+    var connected = !!d.oneBotConnected;
+    $('connState').className = 'conn ' + (connected ? 'on' : 'off');
+    $('connText').textContent = connected ? 'SnowLuma 已连接' : '等待 SnowLuma 连接';
+
+    // 后端模式：webOnly 表示只跑控制台，机器人本体没起来
+    var webOnly = !!d.webOnly;
+    var mode = $('backendMode');
+    mode.textContent = webOnly ? '仅控制台' : '普通';
+    if (webOnly) {
+      var badge = document.createElement('span');
+      badge.className = 'badge badge-warn';
+      badge.textContent = '机器人本体未运行';
+      mode.appendChild(document.createTextNode(' '));
+      mode.appendChild(badge);
+    }
+    $('webOnlyAlert').classList.toggle('hidden', !webOnly);
+
+    var reloadedAt = Number(d.reloadedAt || 0);
+    $('reloadedAt').textContent = reloadedAt > 0 ? formatClock(reloadedAt) : '尚未重载';
+    $('reloadedAt').title = reloadedAt > 0 ? ('重载于 ' + formatTime(reloadedAt)) : '';
+
+    $('countReceived').textContent = formatNumber(d.received);
+    $('countReplied').textContent = formatNumber(d.replied);
+    $('countFailed').textContent = formatNumber(d.failed);
+
+    $('selfId').textContent = d.selfId || '未获取';
+    $('nickname').textContent = d.nickname || '未知';
+    $('remoteAddress').textContent = d.remoteAddress || '（无）';
+    $('uptime').textContent = formatUptime(d.uptimeSeconds);
+    $('wsAddress').textContent = (d.wsHost || '-') + ':' + (d.wsPort === undefined ? '-' : d.wsPort);
+    $('webAddress').textContent = (d.webHost || '-') + ':' + (d.webPort === undefined ? '-' : d.webPort);
+    $('curProvider').textContent = d.provider || '-';
+    $('curModel').textContent = d.model || '-';
+    $('curPersona').textContent = d.persona || '未配置';
+    $('curPersona').title = d.personaPath || '';
+    var imageModel = d.imageModel || '未配置';
+    $('curImageModel').textContent = (d.imageEnabled === false) ? (imageModel + '（画图已关）') : imageModel;
+    $('curProactive').textContent = d.proactiveEnabled ? '开' : '关';
+    $('curAvatar').textContent = d.avatarEnabled ? '开' : '关';
+    $('curBaseUrl').textContent = d.baseUrl || '-';
+    $('configPath').textContent = d.configPath || '-';
+
+    var err = d.lastError || '';
+    if (err) {
+      $('lastErrorText').textContent = err;
+      $('lastErrorBox').classList.remove('hidden');
+    } else {
+      $('lastErrorBox').classList.add('hidden');
+    }
+
+    // 记忆库状态（enabled/available）随时同步，避免面板只在打开时才提示
+    applyMemoryStatus(d.memory || null);
+
+    // 状态里带上了启动时间，顺带补一行可读信息到 title
+    $('uptime').title = d.startedAt ? ('启动于 ' + formatTime(d.startedAt)) : '';
+  }
+
+  /** /api/meta 只是补充信息：拿到名字/版本/配置文件路径，失败也不影响控制台 */
+  function loadMeta() {
+    return api('/api/meta', { ignore401: true })
+      .then(function (res) {
+        var d = res.data || {};
+        state.meta = d;
+        var name = d.name || 'haruka';
+        $('backendVersion').textContent = d.version ? (name + ' ' + d.version) : name;
+      })
+      .catch(function () { /* 忽略 */ });
+  }
+
+  /* ============================================================
+     配置表单
+     ============================================================ */
+
+  function getProvider() {
+    var el = document.querySelector('input[name="provider"]:checked');
+    return el ? el.value : 'gemini';
+  }
+
+  function setProvider(value) {
+    var el = document.querySelector('input[name="provider"][value="' + value + '"]');
+    if (el) { el.checked = true; }
+    syncSegActive();
+    updateProtocolHint();
+  }
+
+  function syncSegActive() {
+    var items = document.querySelectorAll('#providerSeg .seg-item');
+    for (var i = 0; i < items.length; i++) {
+      var input = items[i].querySelector('input');
+      items[i].classList.toggle('active', !!(input && input.checked));
+    }
+  }
+
+  /** 协议路径提示：只展示拼接模板，不做猜测性替换 */
+  function updateProtocolHint() {
+    var provider = getProvider();
+    if (provider === 'openai') {
+      $('protocolHint').textContent = 'POST {base_url}/chat/completions';
+      $('protocolNote').textContent = 'base_url 该填到哪一层取决于服务端实现，请对照上面的拼接规则确认（常见写法是 …/v1）。';
+    } else {
+      $('protocolHint').textContent = 'POST {base_url}/v1beta/models/{model}:generateContent';
+      $('protocolNote').textContent = 'base_url 该填到哪一层取决于服务端实现，请确认它是否已经包含了 /v1beta/models。';
+    }
+  }
+
+  function applyConfig(data) {
+    var server = data.server || {};
+    var llm = data.llm || {};
+    var bot = data.bot || {};
+    var web = data.web || {};
+
+    // server
+    $('cfgServerHost').value = server.host || '';
+    $('cfgServerPort').value = server.port === undefined ? '' : server.port;
+    $('cfgAccessToken').value = server.access_token || '';
+
+    // llm
+    setProvider(llm.provider === 'openai' ? 'openai' : 'gemini');
+    $('cfgBaseUrl').value = llm.base_url || '';
+    $('cfgModel').value = llm.model || '';
+    $('cfgSystemPrompt').value = llm.system_prompt || '';
+    $('cfgSystemPromptFile').value = llm.system_prompt_file || '';
+    $('cfgHistoryLimit').value = llm.history_limit === undefined ? '' : llm.history_limit;
+    $('cfgTemperature').value = llm.temperature === undefined ? '' : llm.temperature;
+    $('cfgMaxTokens').value = llm.max_tokens === undefined ? '' : llm.max_tokens;
+    $('cfgTimeout').value = llm.timeout_seconds === undefined ? '' : llm.timeout_seconds;
+
+    // api_key 永不回显，只反映「后端是否已有一个 key」
+    state.apiKeySet = !!llm.api_key_set;
+    $('cfgApiKey').value = '';
+    $('cfgApiKey').placeholder = state.apiKeySet ? '已配置（留空则不修改）' : '未配置（留空则保持未配置）';
+    var keyBadge = $('apiKeyBadge');
+    keyBadge.textContent = state.apiKeySet ? '已配置' : '未配置';
+    keyBadge.className = 'badge ' + (state.apiKeySet ? 'badge-on' : 'badge-off');
+
+    // bot
+    $('cfgPrivateEnabled').checked = !!bot.private_enabled;
+    $('cfgGroupRequireAt').checked = !!bot.group_require_at;
+    var wake = Array.isArray(bot.wake_words) ? bot.wake_words
+      : (Array.isArray(bot.trigger_names) ? bot.trigger_names : []);
+    $('cfgTriggerNames').value = wake.join(', ');
+    $('cfgWorkers').value = bot.workers === undefined ? '' : bot.workers;
+    $('cfgProactiveEnabled').checked = !!bot.proactive_enabled;
+    $('cfgProactiveOnQuestion').checked = !!bot.proactive_on_question;
+    $('cfgProactiveCooldown').value = bot.proactive_cooldown_seconds === undefined ? '' : bot.proactive_cooldown_seconds;
+    $('cfgProactiveMaxPerHour').value = bot.proactive_max_per_hour === undefined ? '' : bot.proactive_max_per_hour;
+
+    // web
+    $('cfgWebEnabled').checked = !!web.enabled;
+    $('cfgWebHost').value = web.host || '';
+    $('cfgWebPort').value = web.port === undefined ? '' : web.port;
+    $('cfgStaticDir').value = web.static_dir || '';
+    state.secretSet = !!web.secret_set;
+    $('cfgWebSecret').value = '';
+    $('cfgWebSecret').placeholder = state.secretSet ? '已设置（留空则不修改）' : '未设置';
+    var secretBadge = $('webSecretBadge');
+    secretBadge.textContent = state.secretSet ? '已设置' : '未设置';
+    secretBadge.className = 'badge ' + (state.secretSet ? 'badge-on' : 'badge-off');
+
+    // memory（available 是只读状态，只展示不提交）
+    var memory = data.memory || {};
+    $('cfgMemEnabled').checked = !!memory.enabled;
+    $('cfgMemDbPath').value = memory.db_path || '';
+    $('cfgMemInjectLimit').value = memory.inject_limit === undefined ? '' : memory.inject_limit;
+    $('cfgMemExtractEnabled').checked = !!memory.extract_enabled;
+    $('cfgMemExtractMinChars').value = memory.extract_min_chars === undefined ? '' : memory.extract_min_chars;
+    $('cfgMemMaxPerScope').value = memory.max_per_scope === undefined ? '' : memory.max_per_scope;
+    $('cfgMemMinImportance').value = memory.min_importance === undefined ? '' : memory.min_importance;
+    $('cfgMemAvailable').textContent = memory.available ? 'true（已打开）' : 'false（打不开）';
+
+    // image
+    var image = data.image || {};
+    $('cfgImageEnabled').checked = !!image.enabled;
+    $('cfgImageModel').value = image.model || '';
+    $('cfgImageSaveDir').value = image.save_dir || '';
+    $('cfgImageStyle').value = image.style || '';
+    $('cfgImageSendMode').value = (image.send_mode === 'base64') ? 'base64' : 'file';
+    $('cfgImageTimeout').value = image.timeout_seconds === undefined ? '' : image.timeout_seconds;
+    $('cfgImageMaxPerTurn').value = image.max_per_turn === undefined ? '' : image.max_per_turn;
+
+    // avatar
+    var avatar = data.avatar || {};
+    $('cfgAvatarEnabled').checked = !!avatar.enabled;
+    $('cfgAvatarKeywords').value = avatar.look_keywords || '';
+    $('cfgAvatarSize').value = avatar.size === undefined ? '' : avatar.size;
+    $('cfgAvatarCacheMinutes').value = avatar.cache_minutes === undefined ? '' : avatar.cache_minutes;
+    $('cfgAvatarCacheDir').value = avatar.cache_dir || '';
+    $('cfgAvatarTimeout').value = avatar.timeout_seconds === undefined ? '' : avatar.timeout_seconds;
+
+    highlightActiveModel();
+  }
+
+  function loadConfig() {
+    return api('/api/config')
+      .then(function (res) { applyConfig(res.data || {}); })
+      .catch(function (err) {
+        if (err.status !== 401) { toast('err', '读取配置失败：' + err.message); }
+      });
+  }
+
+  /** 逗号（中英文）分隔的唤醒词 -> 数组 */
+  function parseWakeWords(text) {
+    return String(text || '')
+      .split(/[,，]/)
+      .map(function (s) { return s.trim(); })
+      .filter(function (s) { return s.length > 0; });
+  }
+
+  /** send_mode 只允许 file / base64，其他值一律回落到 file */
+  function normalizeSendMode(value) {
+    return String(value || '').toLowerCase() === 'base64' ? 'base64' : 'file';
+  }
+
+  function collectConfig() {
+    return {
+      server: {
+        host: $('cfgServerHost').value.trim(),
+        port: toInt($('cfgServerPort').value),
+        access_token: $('cfgAccessToken').value
+      },
+      llm: {
+        provider: getProvider(),
+        base_url: $('cfgBaseUrl').value.trim(),
+        api_key: $('cfgApiKey').value,
+        api_key_set: state.apiKeySet,
+        model: $('cfgModel').value.trim(),
+        system_prompt: $('cfgSystemPrompt').value,
+        system_prompt_file: $('cfgSystemPromptFile').value.trim(),
+        history_limit: toInt($('cfgHistoryLimit').value),
+        temperature: toFloat($('cfgTemperature').value),
+        max_tokens: toInt($('cfgMaxTokens').value),
+        timeout_seconds: toInt($('cfgTimeout').value)
+      },
+      bot: {
+        private_enabled: $('cfgPrivateEnabled').checked,
+        group_require_at: $('cfgGroupRequireAt').checked,
+        wake_words: parseWakeWords($('cfgTriggerNames').value),
+        workers: toInt($('cfgWorkers').value),
+        proactive_enabled: $('cfgProactiveEnabled').checked,
+        proactive_on_question: $('cfgProactiveOnQuestion').checked,
+        proactive_cooldown_seconds: toInt($('cfgProactiveCooldown').value),
+        proactive_max_per_hour: toInt($('cfgProactiveMaxPerHour').value)
+      },
+      web: {
+        enabled: $('cfgWebEnabled').checked,
+        host: $('cfgWebHost').value.trim(),
+        port: toInt($('cfgWebPort').value),
+        // 留空表示不修改后端已保存的密钥
+        secret: $('cfgWebSecret').value,
+        // 只读状态，回传只为保持同构；后端会忽略它
+        secret_set: state.secretSet,
+        static_dir: $('cfgStaticDir').value.trim()
+      },
+      // available 是只读状态，不放进提交体
+      memory: {
+        enabled: $('cfgMemEnabled').checked,
+        db_path: $('cfgMemDbPath').value.trim(),
+        inject_limit: toInt($('cfgMemInjectLimit').value),
+        extract_enabled: $('cfgMemExtractEnabled').checked,
+        extract_min_chars: toInt($('cfgMemExtractMinChars').value),
+        max_per_scope: toInt($('cfgMemMaxPerScope').value),
+        min_importance: toFloat($('cfgMemMinImportance').value)
+      },
+      image: {
+        enabled: $('cfgImageEnabled').checked,
+        model: $('cfgImageModel').value.trim(),
+        save_dir: $('cfgImageSaveDir').value.trim(),
+        style: $('cfgImageStyle').value,
+        send_mode: normalizeSendMode($('cfgImageSendMode').value),
+        timeout_seconds: toInt($('cfgImageTimeout').value),
+        max_per_turn: toInt($('cfgImageMaxPerTurn').value)
+      },
+      avatar: {
+        enabled: $('cfgAvatarEnabled').checked,
+        look_keywords: $('cfgAvatarKeywords').value.trim(),
+        size: toInt($('cfgAvatarSize').value),
+        cache_minutes: toInt($('cfgAvatarCacheMinutes').value),
+        cache_dir: $('cfgAvatarCacheDir').value.trim(),
+        timeout_seconds: toInt($('cfgAvatarTimeout').value)
+      }
+    };
+  }
+
+  /* ---------------- 表单校验 ---------------- */
+
+  function validateForm() {
+    var problems = [];
+    var firstBad = null;
+
+    function bad(id, msg) {
+      problems.push(msg);
+      if (!firstBad) { firstBad = id; }
+    }
+
+    function checkInt(id, label, min, max) {
+      var raw = $(id).value.trim();
+      if (raw === '') { bad(id, label + ' 不能为空'); return; }
+      if (!/^\d+$/.test(raw)) { bad(id, label + ' 必须是正整数'); return; }
+      var v = Number(raw);
+      if (v < min || (max !== undefined && v > max)) {
+        bad(id, label + ' 必须在 ' + min + ' ~ ' + (max === undefined ? '∞' : max) + ' 之间');
+      }
+    }
+
+    function checkFloat(id, label, min, max) {
+      var raw = $(id).value.trim();
+      if (raw === '') { bad(id, label + ' 不能为空'); return; }
+      var v = Number(raw);
+      if (!isFinite(v) || v < min || (max !== undefined && v > max)) {
+        bad(id, label + ' 必须在 ' + min + ' ~ ' + (max === undefined ? '∞' : max) + ' 之间');
+      }
+    }
+
+    checkInt('cfgServerPort', 'server.port', 1, 65535);
+    checkInt('cfgWebPort', 'web.port', 1, 65535);
+    checkInt('cfgHistoryLimit', 'llm.history_limit', 1);
+    checkInt('cfgMaxTokens', 'llm.max_tokens', 1);
+    checkInt('cfgTimeout', 'llm.timeout_seconds', 1);
+    checkInt('cfgWorkers', 'bot.workers', 1);
+    // memory：inject_limit / extract_min_chars 允许 0
+    checkInt('cfgMemInjectLimit', 'memory.inject_limit', 0, 100);
+    checkInt('cfgMemExtractMinChars', 'memory.extract_min_chars', 0, 1000);
+    checkInt('cfgMemMaxPerScope', 'memory.max_per_scope', 1, 100000);
+    checkFloat('cfgMemMinImportance', 'memory.min_importance', 0, 1);
+    // image
+    checkInt('cfgImageTimeout', 'image.timeout_seconds', 10, 600);
+    checkInt('cfgImageMaxPerTurn', 'image.max_per_turn', 1, 10);
+    // bot 主动接话
+    checkInt('cfgProactiveCooldown', 'bot.proactive_cooldown_seconds', 0, 3600);
+    checkInt('cfgProactiveMaxPerHour', 'bot.proactive_max_per_hour', 1, 120);
+    // avatar
+    checkInt('cfgAvatarSize', 'avatar.size', 40, 640);
+    checkInt('cfgAvatarCacheMinutes', 'avatar.cache_minutes', 0, 10080);
+    checkInt('cfgAvatarTimeout', 'avatar.timeout_seconds', 5, 120);
+
+    // temperature：允许小数，范围 0 ~ 2
+    var tempRaw = $('cfgTemperature').value.trim();
+    if (tempRaw === '') {
+      bad('cfgTemperature', 'llm.temperature 不能为空');
+    } else if (!/^\d+(\.\d+)?$/.test(tempRaw)) {
+      bad('cfgTemperature', 'llm.temperature 必须是数字');
+    } else {
+      var temp = Number(tempRaw);
+      if (temp < 0 || temp > 2) { bad('cfgTemperature', 'llm.temperature 必须在 0 ~ 2 之间'); }
+    }
+
+    if (!$('cfgBaseUrl').value.trim()) { bad('cfgBaseUrl', 'llm.base_url 不能为空'); }
+    if (!$('cfgModel').value.trim()) { bad('cfgModel', 'llm.model 不能为空'); }
+    if (!$('cfgServerHost').value.trim()) { bad('cfgServerHost', 'server.host 不能为空'); }
+    if (!$('cfgWebHost').value.trim()) { bad('cfgWebHost', 'web.host 不能为空'); }
+    if (!$('cfgMemDbPath').value.trim()) { bad('cfgMemDbPath', 'memory.db_path 不能为空'); }
+    if (!$('cfgImageSaveDir').value.trim()) { bad('cfgImageSaveDir', 'image.save_dir 不能为空'); }
+    if (!$('cfgImageModel').value.trim()) { bad('cfgImageModel', 'image.model 不能为空'); }
+    if (!/^(file|base64)$/.test($('cfgImageSendMode').value)) {
+      bad('cfgImageSendMode', 'image.send_mode 只能是 file 或 base64');
+    }
+    if (!$('cfgAvatarCacheDir').value.trim()) { bad('cfgAvatarCacheDir', 'avatar.cache_dir 不能为空'); }
+
+    return { problems: problems, firstBad: firstBad };
+  }
+
+  /* ---------------- 保存 / 重新加载配置 ---------------- */
+
+  function showRestartRequired(items) {
+    var chips = $('restartChips');
+    chips.innerHTML = '';
+    items.forEach(function (item) {
+      var span = document.createElement('span');
+      span.className = 'chip';
+      span.textContent = String(item);
+      chips.appendChild(span);
+    });
+    $('restartBanner').classList.remove('hidden');
+  }
+
+  function hideRestartRequired() {
+    $('restartBanner').classList.add('hidden');
+    $('restartChips').innerHTML = '';
+  }
+
+  function saveConfig() {
+    var result = validateForm();
+    if (result.problems.length) {
+      toast('err', '配置未保存：' + result.problems[0]);
+      if (result.firstBad) {
+        var el = $(result.firstBad);
+        try { el.focus(); } catch (e) { /* 忽略 */ }
+      }
+      return;
+    }
+
+    var btn = $('saveBtn');
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+
+    api('/api/config', { method: 'POST', body: collectConfig() })
+      .then(function (res) {
+        applyConfig(res.data || {});
+        toast('ok', '已保存');
+        var restart = res.restartRequired || [];
+        if (restart.length) { showRestartRequired(restart); } else { hideRestartRequired(); }
+      })
+      .catch(function (err) {
+        if (err.status !== 401) { toast('err', '保存失败：' + err.message); }
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '保存配置';
+      });
+  }
+
+  /** 让后端从磁盘重新读 config.properties（磁盘内容可能被手改过） */
+  function reloadConfigFromDisk() {
+    var btn = $('reloadConfigBtn');
+    btn.disabled = true;
+    btn.textContent = '重新加载中…';
+
+    api('/api/reload', { method: 'POST' })
+      .then(function (res) {
+        var data = res.data || {};
+        toast('ok', '已从磁盘重新加载配置'
+          + (data.reloadedAt ? '（' + formatClock(data.reloadedAt) + '）' : ''));
+        hideRestartRequired();
+        // 磁盘上的内容可能已经变了，重新灌一遍表单
+        return loadConfig().then(function () { refreshStatus(); });
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        // 后端会把「配置文件哪一行有问题」写在 error 里，原样展示
+        toast('err', '重新加载失败：' + err.message, true);
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '重新加载配置';
+      });
+  }
+
+  /* ---------------- 模型列表 ---------------- */
+
+  function renderModelList(models) {
+    var list = $('modelList');
+    list.innerHTML = '';
+    if (!models.length) {
+      var empty = document.createElement('span');
+      empty.className = 'hint';
+      empty.textContent = '后端没有返回任何模型。';
+      list.appendChild(empty);
+      return;
+    }
+    models.forEach(function (name) {
+      var chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'model-chip';
+      chip.textContent = String(name);
+      chip.title = '点击填入 model';
+      chip.addEventListener('click', function () {
+        $('cfgModel').value = String(name);
+        highlightActiveModel();
+      });
+      list.appendChild(chip);
+    });
+    highlightActiveModel();
+  }
+
+  function highlightActiveModel() {
+    var current = $('cfgModel').value.trim();
+    var chips = document.querySelectorAll('#modelList .model-chip');
+    for (var i = 0; i < chips.length; i++) {
+      chips[i].classList.toggle('active', chips[i].textContent === current);
+    }
+  }
+
+  function fetchModels() {
+    var btn = $('fetchModelsBtn');
+    btn.disabled = true;
+    btn.textContent = '拉取中…';
+    $('modelList').innerHTML = '';
+
+    api('/api/models')
+      .then(function (res) {
+        var models = (res.data && res.data.models) || [];
+        renderModelList(models);
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        var list = $('modelList');
+        list.innerHTML = '';
+        var span = document.createElement('span');
+        span.className = 'hint err-text';
+        span.textContent = '拉取失败：' + err.message;
+        list.appendChild(span);
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '拉取模型列表';
+      });
+  }
+
+  /* ---------------- 模型自测 ---------------- */
+
+  /** scope 是否填了：填了就是「完整链路」（注入记忆，可选抽取） */
+  function testScopeValue() {
+    return $('testScope').value.trim();
+  }
+
+  /** 根据 scope 是否填写，切换标题 / 按钮 / 抽取勾选态 */
+  function syncTestMode() {
+    var scope = testScopeValue();
+    var full = !!scope;
+    var extract = $('testExtract');
+
+    $('testCardTitle').textContent = full ? '模型自测 · 完整链路' : '模型自测';
+    $('testBtnInline').textContent = full ? '测完整链路' : '测试';
+    $('testBtn').textContent = full ? '测试完整链路' : '测试模型';
+
+    extract.disabled = !full;
+    if (!full) { extract.checked = false; }
+    extract.parentNode.title = full ? '' : '需要先填 scope';
+
+    $('testHint').textContent = full
+      ? ('走完整链路：按 ' + scope + ' 注入长期记忆后再调模型，不经过 QQ。')
+      : '不经过 QQ，直接用后端当前配置请求一次模型。';
+  }
+
+  /** 完整链路结果里的「注入记忆」区块 */
+  function buildInjectedBlock(injected) {
+    var block = document.createElement('div');
+    block.className = 'test-block';
+
+    var title = document.createElement('div');
+    title.className = 'test-block-title';
+    title.appendChild(document.createTextNode('注入记忆 '));
+    var num = document.createElement('b');
+    num.textContent = String(injected.length) + ' 条';
+    title.appendChild(num);
+    block.appendChild(title);
+
+    if (!injected.length) {
+      var none = document.createElement('div');
+      none.className = 'test-block-empty';
+      none.textContent = '这次没有注入任何记忆（该会话还没有记忆，或已被关闭 / 注入上限为 0）。';
+      block.appendChild(none);
+      return block;
+    }
+
+    var ul = document.createElement('ul');
+    ul.className = 'test-mem-list';
+    injected.forEach(function (item) {
+      var li = document.createElement('li');
+
+      var id = document.createElement('span');
+      id.className = 'mem-id';
+      id.textContent = '#' + (item && item.id !== undefined ? item.id : '?');
+      li.appendChild(id);
+
+      var text = document.createElement('span');
+      text.className = 'mem-text';
+      text.textContent = (item && item.content !== undefined && item.content !== null) ? String(item.content) : '';
+      li.appendChild(text);
+
+      ul.appendChild(li);
+    });
+    block.appendChild(ul);
+    return block;
+  }
+
+  /** 从 images[] 的一项里挑一个能当标题的字符串（后端字段名未约定，按常见几种兜底） */
+  function imageLabel(item, index) {
+    if (item === null || item === undefined) { return '第 ' + (index + 1) + ' 张'; }
+    if (typeof item === 'string') { return item; }
+    var keys = ['file', 'path', 'name', 'filename', 'savedPath', 'filePath', 'url'];
+    for (var i = 0; i < keys.length; i++) {
+      var v = item[keys[i]];
+      if (typeof v === 'string' && v) { return v; }
+    }
+    return '第 ' + (index + 1) + ' 张';
+  }
+
+  /** 这次附给模型的图片（看头像走的就是这条路） */
+  function buildAttachedBlock(attached) {
+    var block = document.createElement('div');
+    block.className = 'test-block';
+
+    var title = document.createElement('div');
+    title.className = 'test-block-title';
+    title.appendChild(document.createTextNode('附上的图片 '));
+    var num = document.createElement('b');
+    num.textContent = String(attached.length) + ' 张';
+    title.appendChild(num);
+    block.appendChild(title);
+
+    if (!attached.length) {
+      var none = document.createElement('div');
+      none.className = 'test-block-empty';
+      none.textContent = '没有附图';
+      block.appendChild(none);
+      return block;
+    }
+
+    var ul = document.createElement('ul');
+    ul.className = 'test-mem-list';
+    attached.forEach(function (name, i) {
+      var li = document.createElement('li');
+      var id = document.createElement('span');
+      id.className = 'mem-id';
+      id.textContent = String(i + 1);
+      li.appendChild(id);
+      var text = document.createElement('span');
+      text.className = 'mem-text';
+      text.textContent = String(name);
+      li.appendChild(text);
+      ul.appendChild(li);
+    });
+    block.appendChild(ul);
+    return block;
+  }
+
+  /** 生成的图片：每张带上参考图来源（avatar / group） */
+  function buildImagesBlock(images) {
+    var block = document.createElement('div');
+    block.className = 'test-block';
+
+    var title = document.createElement('div');
+    title.className = 'test-block-title';
+    title.appendChild(document.createTextNode('生成的图片 '));
+    var num = document.createElement('b');
+    num.textContent = String(images.length) + ' 张';
+    title.appendChild(num);
+    block.appendChild(title);
+
+    var ul = document.createElement('ul');
+    ul.className = 'test-mem-list';
+    images.forEach(function (item, i) {
+      var li = document.createElement('li');
+
+      var id = document.createElement('span');
+      id.className = 'mem-id';
+      id.textContent = String(i + 1);
+      li.appendChild(id);
+
+      var text = document.createElement('span');
+      text.className = 'mem-text';
+      text.textContent = imageLabel(item, i);
+      li.appendChild(text);
+
+      if (item && typeof item === 'object') {
+        var refs = Number(item.references || 0);
+        var source = item.source ? String(item.source) : '';
+        if (refs > 0 || source) {
+          var tag = document.createElement('span');
+          tag.className = 'mem-tag';
+          tag.textContent = '参考图 ' + (refs > 0 ? refs : 0) + ' 张'
+            + (source ? '（' + source + '）' : '');
+          li.appendChild(tag);
+        }
+      }
+
+      ul.appendChild(li);
+    });
+    block.appendChild(ul);
+    return block;
+  }
+
+  function testLlm() {
+    if (state.testPending) { return; }
+
+    var text = $('testText').value.trim() || '你好';
+    var scope = testScopeValue();
+    var senderId = $('testSenderId').value.trim();
+    var wantExtract = $('testExtract').checked;
+    var full = !!scope;
+
+    if (senderId && !/^\d+$/.test(senderId)) {
+      toast('err', '发送者 QQ 号只能是数字');
+      return;
+    }
+
+    var body = { text: text };
+    // 填了才能在自测里验证「看头像」和 [[draw: … | avatar]]
+    if (senderId) { body.senderId = senderId; }
+    if (full) {
+      body.scope = scope;
+      // 没有 scope 时不发 extract：抽取依附在某个会话上
+      if (wantExtract) { body.extract = true; }
+    }
+
+    var btns = [$('testBtn'), $('testBtnInline')];
+    var labels = btns.map(function (b) { return b.textContent; });
+    var pendingLabel = full ? (wantExtract ? '跑完整链路 + 抽取中…' : '跑完整链路中…') : '测试中…';
+
+    state.testPending = true;
+    btns.forEach(function (b) {
+      b.disabled = true;
+      b.textContent = pendingLabel;
+    });
+
+    var box = $('testResult');
+    box.classList.remove('hidden');
+    box.innerHTML = '';
+    var loading = document.createElement('div');
+    loading.className = 'hint';
+    // 抽取会让这次调用慢一倍多，这里不做任何超时，等后端返回即可
+    loading.textContent = full
+      ? (wantExtract ? '正在注入记忆 → 调模型 → 抽取落库，可能要十几秒，请稍等…' : '正在注入记忆并调用模型，请稍等…')
+      : '请求中…';
+    box.appendChild(loading);
+
+    api('/api/test-llm', { method: 'POST', body: body })
+      .then(function (res) {
+        var data = res.data || {};
+        box.innerHTML = '';
+
+        var meta = document.createElement('div');
+        meta.className = 'test-meta';
+        var parts = ['耗时 ' + formatNumber(data.elapsedMs) + ' ms'];
+        if (data.totalMs !== undefined && data.totalMs !== null) {
+          parts[0] += '（总计 ' + formatNumber(data.totalMs) + ' ms）';
+        }
+        if (data.provider || data.model) {
+          parts.push([data.provider || '-', data.model || '-'].join(' / '));
+        }
+        if (data.scope) { parts.push('scope ' + data.scope); }
+        meta.textContent = parts.join(' · ');
+        box.appendChild(meta);
+
+        var pre = document.createElement('pre');
+        pre.className = 'test-reply';
+        pre.textContent = (data.reply === undefined || data.reply === null) ? '（模型返回了空内容）' : String(data.reply);
+        box.appendChild(pre);
+
+        // 完整链路才有的两块信息
+        if (data.injected !== undefined || data.scope) {
+          box.appendChild(buildInjectedBlock(Array.isArray(data.injected) ? data.injected : []));
+        }
+        // 这次附给模型的图片（看头像）
+        if (data.attached !== undefined) {
+          box.appendChild(buildAttachedBlock(Array.isArray(data.attached) ? data.attached : []));
+        }
+        // 画出来的图：带参考图来源
+        if (Array.isArray(data.images) && data.images.length) {
+          box.appendChild(buildImagesBlock(data.images));
+        }
+        if (data.remembered !== undefined && data.remembered !== null && wantExtract) {
+          var block = document.createElement('div');
+          block.className = 'test-block';
+          var title = document.createElement('div');
+          title.className = 'test-block-title';
+          title.appendChild(document.createTextNode('本次抽取落库 '));
+          var num = document.createElement('b');
+          num.textContent = String(data.remembered) + ' 条';
+          title.appendChild(num);
+          block.appendChild(title);
+          if (!Number(data.remembered)) {
+            var none = document.createElement('div');
+            none.className = 'test-block-empty';
+            none.textContent = '这次没有抽到值得长期记住的内容。';
+            block.appendChild(none);
+          }
+          box.appendChild(block);
+        }
+
+        // 落库 / 命中数可能变了，顺手同步面板与状态
+        if (full) { afterMemoryChange(); }
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        box.innerHTML = '';
+        var alert = document.createElement('div');
+        alert.className = 'alert alert-err';
+        alert.style.marginTop = '0';
+        var title = document.createElement('div');
+        title.className = 'alert-title';
+        title.textContent = '测试失败';
+        var body = document.createElement('div');
+        body.className = 'mono pre';
+        body.textContent = err.message;
+        alert.appendChild(title);
+        alert.appendChild(body);
+        box.appendChild(alert);
+      })
+      .then(function () {
+        state.testPending = false;
+        btns.forEach(function (b, i) {
+          b.disabled = false;
+          b.textContent = labels[i];
+        });
+        syncTestMode();  // 恢复成与当前 scope 状态一致的文案
+      });
+  }
+
+  /* ============================================================
+     实时日志
+     ============================================================ */
+
+  function passesFilter(level) {
+    var lv = String(level || 'INFO').toUpperCase();
+    switch (state.levelFilter) {
+      case 'INFO':  return lv !== 'DEBUG';
+      case 'WARN':  return lv === 'WARN' || lv === 'ERROR';
+      case 'ERROR': return lv === 'ERROR';
+      default:      return true;
+    }
+  }
+
+  /** 转义后给消息里的业务标签上色，便于快速扫读 */
+  function highlightMessage(message) {
+    return escapeHtml(message)
+      .replace(/\[收到\]/g, '<span class="tag-recv">[收到]</span>')
+      .replace(/\[回复\]/g, '<span class="tag-reply">[回复]</span>')
+      .replace(/\[(生成失败|发送失败)\]/g, '<span class="tag-fail">[$1]</span>');
+  }
+
+  function buildLogRow(entry) {
+    var level = String(entry.level || 'INFO').toUpperCase();
+    if (LEVELS.indexOf(level) < 0) { level = 'INFO'; }
+
+    var row = document.createElement('div');
+    row.className = 'log-row';
+
+    var time = document.createElement('span');
+    time.className = 'log-time';
+    time.textContent = entry.time || '';
+
+    var badge = document.createElement('span');
+    badge.className = 'lv lv-' + level;
+    badge.textContent = level;
+
+    var name = document.createElement('span');
+    name.className = 'log-name';
+    name.textContent = entry.name || '';
+    name.title = entry.name || '';
+
+    var msg = document.createElement('span');
+    msg.className = 'log-msg';
+    msg.innerHTML = highlightMessage(entry.message);
+
+    row.appendChild(time);
+    row.appendChild(badge);
+    row.appendChild(name);
+    row.appendChild(msg);
+    return row;
+  }
+
+  function scrollToBottom() {
+    var list = $('logList');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function updateEmptyHint() {
+    var list = $('logList');
+    var hint = $('logEmpty');
+    if (list.querySelectorAll('.log-row').length === 0) {
+      if (!hint) {
+        hint = document.createElement('div');
+        hint.className = 'log-empty';
+        hint.id = 'logEmpty';
+        list.appendChild(hint);
+      }
+      hint.textContent = state.paused ? '已暂停接收，点击「继续接收」恢复。' : '暂无匹配的日志。';
+    } else if (hint && hint.parentNode) {
+      hint.parentNode.removeChild(hint);
+    }
+  }
+
+  /** 追加一条日志（去重、限流、按过滤条件渲染） */
+  function appendLog(entry) {
+    if (!entry || typeof entry !== 'object') { return; }
+
+    var seq = (typeof entry.seq === 'number') ? entry.seq : Number(entry.seq);
+    if (!isNaN(seq)) {
+      // SSE 自动重连时会用连接建立时的 after 重放，这里按 seq 去重
+      if (seq <= state.lastSeq) { return; }
+      state.lastSeq = seq;
+    }
+
+    state.logBuffer.push(entry);
+    if (state.logBuffer.length > MAX_ROWS) {
+      state.logBuffer.splice(0, state.logBuffer.length - MAX_ROWS);
+    }
+
+    if (state.paused) { return; }
+    if (!passesFilter(entry.level)) { return; }
+
+    var list = $('logList');
+
+    // 先摘掉占位提示，再追加；顺序反了会把提示挤到列表中间
+    var hint = $('logEmpty');
+    if (hint && hint.parentNode) { hint.parentNode.removeChild(hint); }
+
+    list.appendChild(buildLogRow(entry));
+
+    // DOM 里最多保留 MAX_ROWS 行，超出就从顶部移除
+    while (list.childElementCount > MAX_ROWS) {
+      list.removeChild(list.firstElementChild);
+    }
+
+    if (state.autoScroll) { scrollToBottom(); }
+  }
+
+  /** 按当前过滤条件整体重绘（切换过滤、继续接收时使用） */
+  function renderAll() {
+    var list = $('logList');
+    list.innerHTML = '';
+
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < state.logBuffer.length; i++) {
+      var entry = state.logBuffer[i];
+      if (passesFilter(entry.level)) {
+        frag.appendChild(buildLogRow(entry));
+      }
+    }
+    list.appendChild(frag);
+
+    updateEmptyHint();
+    if (state.autoScroll) { scrollToBottom(); }
+  }
+
+  function setStreamState(kind) {
+    var el = $('streamState');
+    var text = $('streamStateText');
+    el.className = 'log-stream-state';
+    if (kind === 'live') {
+      el.classList.add('live');
+      text.textContent = '实时接收中';
+    } else if (kind === 'retry') {
+      el.classList.add('retry');
+      text.textContent = '已断开，重连中…';
+    } else if (kind === 'paused') {
+      text.textContent = '已暂停';
+    } else {
+      text.textContent = '连接中…';
+    }
+  }
+
+  function closeStream() {
+    if (state.eventSource) {
+      state.eventSource.close();
+      state.eventSource = null;
+    }
+  }
+
+  function connectStream() {
+    closeStream();
+    if (!state.connected || state.paused) { return; }
+
+    setStreamState('connecting');
+    // EventSource 无法自定义请求头，所以密钥走查询参数（后端对这个接口额外接受 secret=）
+    var url = state.backend + '/api/logs/stream'
+      + '?after=' + encodeURIComponent(state.lastSeq)
+      + '&secret=' + encodeURIComponent(state.secret || '');
+    var es = new EventSource(url);
+    state.eventSource = es;
+
+    es.onopen = function () {
+      if (state.eventSource === es) { setStreamState('live'); }
+    };
+
+    es.onmessage = function (ev) {
+      // 心跳是 ": ping" 注释行，浏览器不会派发 message 事件，无需特殊处理
+      var entry = null;
+      try { entry = JSON.parse(ev.data); } catch (e) { return; }
+      appendLog(entry);
+    };
+
+    es.onerror = function () {
+      // EventSource 会按浏览器策略自动重连；这里只反映到界面上
+      if (state.eventSource === es) { setStreamState('retry'); }
+    };
+  }
+
+  function startLogs() {
+    state.logBuffer = [];
+    state.lastSeq = 0;
+    state.autoScroll = true;
+    state.paused = false;
+    $('autoScrollChk').checked = true;
+    $('pauseBtn').textContent = '暂停接收';
+
+    var list = $('logList');
+    list.innerHTML = '';
+    var loading = document.createElement('div');
+    loading.className = 'log-empty';
+    loading.id = 'logEmpty';
+    loading.textContent = '正在加载历史日志…';
+    list.appendChild(loading);
+
+    setStreamState('connecting');
+
+    api('/api/logs/history?after=0')
+      .then(function (res) {
+        var data = res.data || {};
+        var entries = data.entries || [];
+        entries.forEach(appendLog);
+        if (typeof data.latestSeq === 'number' && data.latestSeq > state.lastSeq) {
+          state.lastSeq = data.latestSeq;
+        }
+        updateEmptyHint();
+        if (state.autoScroll) { scrollToBottom(); }
+      })
+      .catch(function () {
+        // 历史拉取失败不阻塞实时流
+        updateEmptyHint();
+      })
+      .then(function () {
+        connectStream();
+      });
+  }
+
+  /* ============================================================
+     人设文件
+     ============================================================ */
+
+  /** 文本框内容与服务端最后一次下发的文本不一致，就是有未保存修改 */
+  function personaDirty() {
+    return state.persona.loaded && $('personaText').value !== state.persona.savedText;
+  }
+
+  function updatePersonaCounter() {
+    $('personaCount').textContent = formatNumber($('personaText').value.length) + ' 字';
+    $('personaDirty').textContent = personaDirty() ? '有未保存的修改' : '';
+  }
+
+  /** 保存时发现文件被外部改过，后端会把旧版备份到这里 */
+  function showPersonaBackup(path) {
+    $('personaBackupPath').textContent = path;
+    $('personaBackupPath').dataset.path = path;
+    $('personaBackupPath').title = '点击复制：' + path;
+    $('personaBackupAlert').classList.remove('hidden');
+  }
+
+  function hidePersonaBackup() {
+    $('personaBackupAlert').classList.add('hidden');
+    $('personaBackupPath').textContent = '-';
+    $('personaBackupPath').dataset.path = '';
+    $('personaBackupPath').title = '';
+  }
+
+  function renderPersona(d) {
+    state.persona.configuredPath = d.configuredPath || '';
+    state.persona.resolvedPath = d.resolvedPath || '';
+    state.persona.exists = !!d.exists;
+    state.persona.savedText = (d.text === undefined || d.text === null) ? '' : String(d.text);
+    // 保存时回传的基线：后端用它判断磁盘上的文件是否被外部改过
+    state.persona.mtime = Number(d.mtime || 0);
+    state.persona.loaded = true;
+
+    $('personaText').value = state.persona.savedText;
+
+    var summary = $('personaSummary');
+    summary.textContent = d.summary || '（后端未提供摘要）';
+    summary.classList.remove('err-text');
+
+    var path = state.persona.resolvedPath;
+    $('personaPath').textContent = path || '（还没有解析出路径）';
+    $('personaPath').dataset.path = path;
+    $('personaPath').title = path ? ('点击复制：' + path) : '';
+
+    $('personaNoPathAlert').classList.toggle('hidden', !!state.persona.configuredPath);
+    $('personaMissingAlert').classList.toggle(
+      'hidden', !(state.persona.configuredPath && !state.persona.exists));
+
+    // config 里的内联补充指令：非空才显示
+    var inline = d.inlinePrompt || '';
+    $('personaInlineText').textContent = inline;
+    $('personaInlineBox').classList.toggle('hidden', !inline);
+
+    // 重新渲染（载入 / 保存后）说明当前内容已与磁盘对齐，旧的备份提示不再适用
+    hidePersonaBackup();
+    $('personaSaveHint').textContent = '';
+    updatePersonaCounter();
+  }
+
+  function resetPersonaPanel() {
+    state.persona.loaded = false;
+    state.persona.savedText = '';
+    state.persona.configuredPath = '';
+    state.persona.resolvedPath = '';
+    state.persona.exists = false;
+    state.persona.mtime = 0;
+
+    $('personaSummary').textContent = '正在读取人设…';
+    $('personaSummary').classList.remove('err-text');
+    $('personaText').value = '';
+    $('personaPath').textContent = '-';
+    $('personaPath').dataset.path = '';
+    $('personaPath').title = '';
+    $('personaNoPathAlert').classList.add('hidden');
+    $('personaMissingAlert').classList.add('hidden');
+    $('personaInlineBox').classList.add('hidden');
+    $('personaInlineText').textContent = '';
+    hidePersonaBackup();
+    $('personaSaveHint').textContent = '';
+    updatePersonaCounter();
+  }
+
+  function loadPersona() {
+    return api('/api/persona')
+      .then(function (res) { renderPersona(res.data || {}); })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        state.persona.loaded = false;
+        var summary = $('personaSummary');
+        summary.textContent = '读取人设失败：' + err.message;
+        summary.classList.add('err-text');
+      });
+  }
+
+  function savePersona() {
+    var text = $('personaText').value;
+    var btn = $('personaSaveBtn');
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    $('personaSaveHint').textContent = '';
+
+    // 带上载入 / 上次保存时的 mtime，后端据此判断磁盘上的文件是否被外部改过。
+    // 还没载入过（mtime 为 0）就不传，让后端按"正常写入"处理。
+    var body = { text: text };
+    if (state.persona.mtime > 0) { body.expectedMtime = state.persona.mtime; }
+
+    api('/api/persona', { method: 'POST', body: body })
+      .then(function (res) {
+        var d = res.data || {};
+        // POST 的响应与 GET 同构，直接渲染即可，不需要再 GET 一次
+        renderPersona(d);
+        $('personaSaveHint').textContent = '已保存，立刻生效';
+        // backup 非空 = 磁盘上的旧版本已被自动备份
+        if (d.backup) { showPersonaBackup(d.backup); }
+        refreshStatus();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        // 后端会把「没配路径」「人设太长」这类原因写在 error 里，原样展示
+        $('personaSaveHint').textContent = err.message;
+        toast('err', '保存人设失败：' + err.message, true);
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '保存人设';
+      });
+  }
+
+  function reloadPersona() {
+    if (personaDirty() && !window.confirm('文本框里有未保存的修改，重新载入会丢弃它们，确定继续？')) {
+      return;
+    }
+    $('personaSaveHint').textContent = '';
+    loadPersona().then(function () { toast('ok', '已重新载入人设文件'); });
+  }
+
+  function bindPersona() {
+    $('personaText').addEventListener('input', updatePersonaCounter);
+    $('personaSaveBtn').addEventListener('click', savePersona);
+    $('personaReloadBtn').addEventListener('click', reloadPersona);
+
+    $('personaPath').addEventListener('click', function () {
+      copyToClipboard(this.dataset.path || '');
+    });
+
+    $('personaBackupPath').addEventListener('click', function () {
+      copyToClipboard(this.dataset.path || '');
+    });
+
+    // Ctrl/Cmd + S：焦点在文本框里也能直接保存
+    $('personaText').addEventListener('keydown', function (ev) {
+      if ((ev.ctrlKey || ev.metaKey) && (ev.key === 's' || ev.key === 'S')) {
+        ev.preventDefault();
+        savePersona();
+      }
+    });
+
+    updatePersonaCounter();
+  }
+
+  /* ============================================================
+     长期记忆
+     ============================================================ */
+
+  var SOURCE_LABEL = { auto: '自动', console: '手动', import: '导入' };
+  var SOURCE_CLASS = { auto: 'badge-auto', console: 'badge-console', import: 'badge-import' };
+  var SOURCE_TITLE = {
+    auto: 'auto：聊天时自动抽取，她自己记的',
+    console: 'console：控制台手动添加',
+    import: 'import：从导出文件导入'
+  };
+
+  /** 时间戳 -> 「3 分钟前」这种相对时间 */
+  function formatRelative(ms) {
+    var n = Number(ms);
+    if (!n || isNaN(n)) { return '-'; }
+    var diff = Date.now() - n;
+    if (diff < 0) { diff = 0; }
+    var sec = Math.floor(diff / 1000);
+    if (sec < 60) { return '刚刚'; }
+    var min = Math.floor(sec / 60);
+    if (min < 60) { return min + ' 分钟前'; }
+    var hour = Math.floor(min / 60);
+    if (hour < 24) { return hour + ' 小时前'; }
+    var day = Math.floor(hour / 24);
+    if (day < 30) { return day + ' 天前'; }
+    var month = Math.floor(day / 30);
+    if (month < 12) { return month + ' 个月前'; }
+    return Math.floor(month / 12) + ' 年前';
+  }
+
+  /** 复制到剪贴板：优先用异步 API，不可用时退回临时 textarea */
+  function copyToClipboard(text) {
+    if (!text) { return; }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(function () {
+        toast('ok', '已复制：' + text);
+      }, function () {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    try {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      toast(ok ? 'ok' : 'err', ok ? '已复制：' + text : '复制失败，请手动选中复制');
+    } catch (e) {
+      toast('err', '复制失败，请手动选中复制');
+    }
+  }
+
+  /** 导出文件名里的时间戳：YYYYMMDD-HHmm */
+  function exportStamp() {
+    var d = new Date();
+    return '' + d.getFullYear() + pad2(d.getMonth() + 1) + pad2(d.getDate())
+      + '-' + pad2(d.getHours()) + pad2(d.getMinutes());
+  }
+
+  /** Blob + 隐藏 <a download> 触发下载 */
+  function downloadText(filename, text) {
+    var blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
+  }
+
+  function hasMemFilter() {
+    return !!($('memScopeFilter').value || $('memSearch').value.trim());
+  }
+
+  /** 顶部信息条：总数 / 上限 / 自动抽取 / 数据库路径 / 可用性提示
+   *  d 可能是 /api/memories 的结果（total=本次条数、totalAll=全库），
+   *  也可能是 /api/status 的 memory 对象（count/total 都表示全库）。
+   *  shownCount 只在 /api/memories 路径下传入，用于筛选时提示「当前显示 N 条」。 */
+  function renderMemorySummary(d, shownCount) {
+    var available = d.available !== false;
+    var enabled = d.enabled !== false;
+
+    $('memUnavailableAlert').classList.toggle('hidden', available);
+    $('memDisabledAlert').classList.toggle('hidden', !(!enabled && available));
+
+    var all = (d.totalAll === undefined || d.totalAll === null) ? Number(d.total || 0) : Number(d.totalAll);
+    state.mem.totalAll = all;
+    $('memTotal').textContent = formatNumber(all);
+
+    var shown = $('memShown');
+    if (typeof shownCount === 'number' && hasMemFilter()) {
+      shown.textContent = '当前显示 ' + formatNumber(shownCount) + ' 条';
+      shown.classList.remove('hidden');
+    } else {
+      shown.textContent = '';
+      shown.classList.add('hidden');
+    }
+
+    $('memInjectLimit').textContent = (d.injectLimit === undefined || d.injectLimit === null) ? '-' : d.injectLimit;
+    $('memMaxPerScope').textContent = (d.maxPerScope === undefined || d.maxPerScope === null) ? '-' : d.maxPerScope;
+    $('memExtract').textContent = d.extractEnabled ? '开' : '关';
+
+    var path = d.dbPath || '';
+    $('memDbPath').textContent = path || '（后端未提供路径）';
+    $('memDbPath').dataset.path = path;
+    $('memDbPath').title = path ? ('点击复制：' + path) : '';
+  }
+
+  /** /api/status 里的 memory 对象：只同步可用性提示；面板没加载过时顺便把数字也补上 */
+  function applyMemoryStatus(mem) {
+    if (!mem) { return; }
+    var available = mem.available !== false;
+    var enabled = mem.enabled !== false;
+    $('memUnavailableAlert').classList.toggle('hidden', available);
+    $('memDisabledAlert').classList.toggle('hidden', !(!enabled && available));
+    if (!state.mem.loaded) { renderMemorySummary(mem); }
+  }
+
+  function resetMemoryPanel() {
+    state.mem.loaded = false;
+    state.mem.entries = [];
+    state.mem.total = 0;
+    state.mem.totalAll = 0;
+    state.memEditingId = 0;
+    if (state.memDebounce) { clearTimeout(state.memDebounce); state.memDebounce = null; }
+
+    $('memSearch').value = '';
+    $('memImportFile').value = '';
+    $('memImportMode').value = 'merge';
+
+    var select = $('memScopeFilter');
+    select.innerHTML = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = '全部 scope';
+    select.appendChild(all);
+    $('memScopeOptions').innerHTML = '';
+    $('testScopeOptions').innerHTML = '';
+
+    $('memTotal').textContent = '-';
+    $('memInjectLimit').textContent = '-';
+    $('memMaxPerScope').textContent = '-';
+    $('memExtract').textContent = '-';
+    $('memShown').textContent = '';
+    $('memShown').classList.add('hidden');
+    $('memDbPath').textContent = '-';
+    $('memDbPath').dataset.path = '';
+
+    closeMemoryForm();
+    $('memList').innerHTML = '<div class="mem-empty">正在读取记忆…</div>';
+  }
+
+  function loadMemories() {
+    var params = [];
+    var scope = $('memScopeFilter').value;
+    var q = $('memSearch').value.trim();
+    if (scope) { params.push('scope=' + encodeURIComponent(scope)); }
+    if (q) { params.push('q=' + encodeURIComponent(q)); }
+    params.push('limit=' + MEM_LIMIT);
+
+    $('memList').innerHTML = '<div class="mem-empty">正在读取记忆…</div>';
+
+    return api('/api/memories?' + params.join('&'))
+      .then(function (res) {
+        var d = res.data || {};
+        state.mem.loaded = true;
+        state.mem.entries = d.entries || [];
+        // total = 本次返回的条数；totalAll = 全库条数（见 renderMemorySummary）
+        state.mem.total = Number(d.total === undefined ? state.mem.entries.length : d.total);
+        syncScopeOptions(d.scopes || []);
+        renderMemorySummary(d, state.mem.entries.length);
+        renderMemoryList(state.mem.entries);
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        var list = $('memList');
+        list.innerHTML = '';
+        var box = document.createElement('div');
+        box.className = 'mem-empty err-text';
+        box.textContent = '读取记忆失败：' + err.message;
+        list.appendChild(box);
+      });
+  }
+
+  /** scope 下拉 + 表单里的 scope 快捷候选（datalist 允许自由输入） */
+  function syncScopeOptions(scopes) {
+    var select = $('memScopeFilter');
+    var current = select.value;
+    var known = {};
+
+    for (var i = 0; i < scopes.length; i++) {
+      if (scopes[i]) { known[scopes[i]] = true; }
+    }
+    if (current) { known[current] = true; }  // 当前选择即使后端不再返回也要保留
+
+    var names = Object.keys(known).sort();
+
+    select.innerHTML = '';
+    var all = document.createElement('option');
+    all.value = '';
+    all.textContent = '全部 scope';
+    select.appendChild(all);
+    names.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      opt.textContent = name;
+      select.appendChild(opt);
+    });
+    select.value = current || '';
+
+    var datalist = $('memScopeOptions');
+    datalist.innerHTML = '';
+    names.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      datalist.appendChild(opt);
+    });
+
+    // 模型自测的 scope 候选：已有 scope + 固定的 global
+    var testList = $('testScopeOptions');
+    var testNames = names.slice();
+    if (testNames.indexOf('global') < 0) { testNames.push('global'); }
+    testList.innerHTML = '';
+    testNames.forEach(function (name) {
+      var opt = document.createElement('option');
+      opt.value = name;
+      testList.appendChild(opt);
+    });
+  }
+
+  function buildMemoryRow(entry) {
+    var row = document.createElement('div');
+    row.className = 'mem-row';
+
+    var main = document.createElement('div');
+    main.className = 'mem-main';
+
+    var content = document.createElement('div');
+    content.className = 'mem-content';
+    content.textContent = entry.content || '';
+    main.appendChild(content);
+
+    var meta = document.createElement('div');
+    meta.className = 'mem-meta';
+
+    if (entry.scope) {
+      var scope = document.createElement('span');
+      scope.className = 'badge badge-scope';
+      scope.textContent = entry.scope;
+      meta.appendChild(scope);
+    }
+
+    if (entry.subject) {
+      var subject = document.createElement('span');
+      subject.textContent = '主题 ' + entry.subject;
+      meta.appendChild(subject);
+    }
+
+    var source = String(entry.source || '');
+    var sourceBadge = document.createElement('span');
+    sourceBadge.className = 'badge ' + (SOURCE_CLASS[source] || '');
+    sourceBadge.textContent = SOURCE_LABEL[source] || source || '未知';
+    sourceBadge.title = SOURCE_TITLE[source] || ('source=' + (source || '未知'));
+    meta.appendChild(sourceBadge);
+
+    var hits = document.createElement('span');
+    hits.textContent = '命中 ' + formatNumber(entry.hits || 0);
+    meta.appendChild(hits);
+
+    var stamp = Number(entry.updatedAt || entry.createdAt || 0);
+    var updated = document.createElement('span');
+    updated.textContent = formatRelative(stamp);
+    updated.title = stamp ? ('更新于 ' + formatTime(stamp)) : '';
+    meta.appendChild(updated);
+
+    main.appendChild(meta);
+    row.appendChild(main);
+
+    var actions = document.createElement('div');
+    actions.className = 'mem-actions';
+
+    var edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'btn btn-xs';
+    edit.textContent = '编辑';
+    edit.addEventListener('click', function () { openMemoryForm(entry); });
+    actions.appendChild(edit);
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn btn-xs';
+    del.textContent = '删除';
+    del.addEventListener('click', function () { askDeleteMemory(entry, row); });
+    actions.appendChild(del);
+
+    row.appendChild(actions);
+    return row;
+  }
+
+  function renderMemoryList(entries) {
+    var list = $('memList');
+    list.innerHTML = '';
+
+    if (!entries.length) {
+      var empty = document.createElement('div');
+      empty.className = 'mem-empty';
+      empty.textContent = hasMemFilter()
+        ? '没有匹配的记忆。'
+        : '还没有记忆。多聊几句，或手动加一条。';
+      list.appendChild(empty);
+      return;
+    }
+
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < entries.length; i++) {
+      frag.appendChild(buildMemoryRow(entries[i]));
+    }
+    list.appendChild(frag);
+
+    // 结果被 limit 截断时给出提示（有筛选时不显示，避免和「当前显示 N 条」重复）
+    if (!hasMemFilter() && state.mem.totalAll > entries.length) {
+      var more = document.createElement('div');
+      more.className = 'mem-empty';
+      more.textContent = '共 ' + formatNumber(state.mem.totalAll) + ' 条，当前只显示前 '
+        + entries.length + ' 条，可用搜索缩小范围。';
+      list.appendChild(more);
+    }
+  }
+
+  /* ---------------- 新增 / 编辑 ---------------- */
+
+  function openMemoryForm(entry) {
+    state.memEditingId = (entry && entry.id) ? Number(entry.id) : 0;
+    $('memFormTitle').textContent = state.memEditingId > 0
+      ? ('编辑记忆 #' + state.memEditingId)
+      : '新增记忆';
+    $('memFormScope').value = entry ? (entry.scope || '') : $('memScopeFilter').value;
+    $('memFormSubject').value = entry ? (entry.subject || '') : '';
+    $('memFormContent').value = entry ? (entry.content || '') : '';
+    $('memFormHint').textContent = '';
+    $('memForm').classList.remove('hidden');
+    try { $('memFormContent').focus(); } catch (e) { /* 忽略 */ }
+  }
+
+  function closeMemoryForm() {
+    state.memEditingId = 0;
+    $('memForm').classList.add('hidden');
+    $('memFormTitle').textContent = '新增记忆';
+    $('memFormScope').value = '';
+    $('memFormSubject').value = '';
+    $('memFormContent').value = '';
+    $('memFormHint').textContent = '';
+  }
+
+  function saveMemory() {
+    var scope = $('memFormScope').value.trim();
+    var content = $('memFormContent').value.trim();
+
+    if (!scope) { $('memFormHint').textContent = 'scope 不能为空'; return; }
+    if (!content) { $('memFormHint').textContent = '记忆内容不能为空'; return; }
+
+    var editing = state.memEditingId > 0;
+    var btn = $('memFormSave');
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    $('memFormHint').textContent = '';
+
+    api('/api/memories', {
+      method: 'POST',
+      body: {
+        id: state.memEditingId,   // 0 = 新建
+        scope: scope,
+        subject: $('memFormSubject').value.trim(),
+        content: content
+      }
+    })
+      .then(function () {
+        toast('ok', editing ? '已更新记忆' : '已新增记忆');
+        closeMemoryForm();
+        return afterMemoryChange();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        $('memFormHint').textContent = err.message;
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '保存';
+      });
+  }
+
+  /* ---------------- 删除（行内二次确认） ---------------- */
+
+  function askDeleteMemory(entry, row) {
+    var actions = row.querySelector('.mem-actions');
+    if (!actions || actions.dataset.confirming === '1') { return; }
+    actions.dataset.confirming = '1';
+    actions.innerHTML = '';
+
+    var ask = document.createElement('span');
+    ask.className = 'hint';
+    ask.textContent = '确定删除？';
+    actions.appendChild(ask);
+
+    var yes = document.createElement('button');
+    yes.type = 'button';
+    yes.className = 'btn btn-xs';
+    yes.textContent = '删除';
+    yes.addEventListener('click', function () { deleteMemory(entry.id); });
+    actions.appendChild(yes);
+
+    var no = document.createElement('button');
+    no.type = 'button';
+    no.className = 'btn btn-xs';
+    no.textContent = '取消';
+    no.addEventListener('click', function () { renderMemoryList(state.mem.entries); });
+    actions.appendChild(no);
+  }
+
+  function deleteMemory(id) {
+    api('/api/memories/delete', { method: 'POST', body: { id: Number(id) } })
+      .then(function (res) {
+        var d = res.data || {};
+        if (d.deleted === false) { toast('warn', '后端没有删除任何记录'); }
+        else { toast('ok', '已删除'); }
+        return afterMemoryChange();
+      })
+      .catch(function (err) {
+        if (err.status !== 401) { toast('err', '删除失败：' + err.message); }
+      });
+  }
+
+  /* ---------------- 导入 / 导出 ---------------- */
+
+  function exportMemories() {
+    var btn = $('memExportBtn');
+    btn.disabled = true;
+    btn.textContent = '导出中…';
+
+    api('/api/memories/export')
+      .then(function (res) {
+        var data = res.data || {};
+        var name = 'haruka-memories-' + exportStamp() + '.json';
+        var count = (data.entries || []).length;
+        downloadText(name, JSON.stringify(data, null, 2));
+        toast('ok', '已导出 ' + count + ' 条记忆：' + name);
+      })
+      .catch(function (err) {
+        if (err.status !== 401) { toast('err', '导出失败：' + err.message); }
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '导出';
+      });
+  }
+
+  function importMemories(file) {
+    if (!file) { return; }
+
+    var mode = $('memImportMode').value === 'replace' ? 'replace' : 'merge';
+    if (mode === 'replace' && !window.confirm('覆盖导入会先清空后端现有的全部记忆，确定继续？')) {
+      $('memImportFile').value = '';
+      return;
+    }
+
+    var btn = $('memImportBtn');
+    btn.disabled = true;
+    btn.textContent = '导入中…';
+
+    file.text()
+      .then(function (text) {
+        var parsed = null;
+        try {
+          parsed = JSON.parse(text);
+        } catch (e) {
+          throw new ApiError('文件不是合法的 JSON（' + e.message + '）', -1);
+        }
+        var entries = (parsed && Array.isArray(parsed.entries)) ? parsed.entries : null;
+        if (!entries) {
+          throw new ApiError('JSON 里没有 entries 数组，看起来不是 haruka 导出的记忆文件', -1);
+        }
+        return api('/api/memories/import', { method: 'POST', body: { mode: mode, entries: entries } });
+      })
+      .then(function (res) {
+        var d = res.data || {};
+        toast('ok', '导入完成：新增 ' + formatNumber(d.imported)
+          + ' 条，跳过 ' + formatNumber(d.skipped)
+          + ' 条，当前共 ' + formatNumber(d.total) + ' 条');
+        return afterMemoryChange();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        toast('err', '导入失败：' + err.message, true);
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '导入';
+        $('memImportFile').value = '';
+      });
+  }
+
+  /** 记忆增删改之后：刷新列表 + 刷新状态（让顶部数字同步） */
+  function afterMemoryChange() {
+    return loadMemories().then(function () { refreshStatus(); });
+  }
+
+  /* ---------------- 事件绑定 ---------------- */
+
+  function bindMemory() {
+    $('memRefreshBtn').addEventListener('click', function () { loadMemories(); });
+
+    $('memScopeFilter').addEventListener('change', function () { loadMemories(); });
+
+    $('memSearch').addEventListener('input', function () {
+      if (state.memDebounce) { clearTimeout(state.memDebounce); }
+      state.memDebounce = setTimeout(function () {
+        state.memDebounce = null;
+        loadMemories();
+      }, MEM_DEBOUNCE);
+    });
+
+    $('memNewBtn').addEventListener('click', function () { openMemoryForm(null); });
+    $('memFormSave').addEventListener('click', saveMemory);
+    $('memFormCancel').addEventListener('click', closeMemoryForm);
+
+    $('memExportBtn').addEventListener('click', exportMemories);
+    $('memImportBtn').addEventListener('click', function () { $('memImportFile').click(); });
+    $('memImportFile').addEventListener('change', function () {
+      importMemories(this.files && this.files[0]);
+    });
+
+    $('memDbPath').addEventListener('click', function () {
+      copyToClipboard(this.dataset.path || '');
+    });
+  }
+
+  /* ============================================================
+     事件绑定
+     ============================================================ */
+
+  function bindPasswordToggle(inputId, buttonId) {
+    $(buttonId).addEventListener('click', function () {
+      var input = $(inputId);
+      var show = input.type === 'password';
+      input.type = show ? 'text' : 'password';
+      this.textContent = show ? '隐藏' : '显示';
+    });
+  }
+
+  function bindForm() {
+    // provider 分段控件
+    var radios = document.querySelectorAll('input[name="provider"]');
+    for (var i = 0; i < radios.length; i++) {
+      radios[i].addEventListener('change', function () {
+        syncSegActive();
+        updateProtocolHint();
+      });
+    }
+
+    $('cfgBaseUrl').addEventListener('input', updateProtocolHint);
+    $('cfgModel').addEventListener('input', function () {
+      updateProtocolHint();
+      highlightActiveModel();
+    });
+
+    bindPasswordToggle('cfgApiKey', 'toggleApiKey');
+    bindPasswordToggle('cfgWebSecret', 'toggleWebSecret');
+
+    $('fetchModelsBtn').addEventListener('click', fetchModels);
+    $('saveBtn').addEventListener('click', saveConfig);
+    $('reloadConfigBtn').addEventListener('click', reloadConfigFromDisk);
+    $('refreshBtn').addEventListener('click', function () {
+      loadConfig().then(function () { toast('ok', '已从后端重新读取配置'); });
+    });
+    $('testBtn').addEventListener('click', testLlm);
+    $('testBtnInline').addEventListener('click', testLlm);
+    $('testScope').addEventListener('input', syncTestMode);
+    $('testExtract').addEventListener('change', syncTestMode);
+    syncTestMode();
+    $('restartBannerClose').addEventListener('click', hideRestartRequired);
+  }
+
+  function bindLogs() {
+    $('levelFilter').addEventListener('change', function () {
+      state.levelFilter = this.value;
+      renderAll();
+    });
+
+    $('autoScrollChk').addEventListener('change', function () {
+      state.autoScroll = this.checked;
+      if (state.autoScroll) { scrollToBottom(); }
+    });
+
+    $('logList').addEventListener('scroll', function () {
+      var list = $('logList');
+      var atBottom = (list.scrollHeight - list.scrollTop - list.clientHeight) < 24;
+      if (atBottom !== state.autoScroll) {
+        state.autoScroll = atBottom;
+        $('autoScrollChk').checked = atBottom;
+      }
+    });
+
+    $('pauseBtn').addEventListener('click', function () {
+      state.paused = !state.paused;
+      this.textContent = state.paused ? '继续接收' : '暂停接收';
+      if (state.paused) {
+        closeStream();
+        setStreamState('paused');
+      } else {
+        renderAll();
+        connectStream();
+      }
+      updateEmptyHint();
+    });
+
+    $('clearBtn').addEventListener('click', function () {
+      // 只清前端显示，不影响后端缓冲
+      state.logBuffer = [];
+      $('logList').innerHTML = '';
+      updateEmptyHint();
+    });
+  }
+
+  /* ============================================================
+     启动
+     ============================================================ */
+
+  function boot() {
+    bindConnect();
+    bindForm();
+    bindLogs();
+    bindMemory();
+    bindPersona();
+
+    var saved = loadConnection();
+    state.backend = saved.backend || DEFAULT_BACKEND;
+    state.secret = saved.secret || '';
+
+    // 存过「地址 + 密钥」就直接试连；密钥为空的存法（''）也算存过
+    if (saved.backend && saved.secret !== null) {
+      api('/api/status', { ignore401: true })
+        .then(function (res) { enterConsole(res.data || {}); })
+        .catch(function (err) {
+          if (err.status === 401) {
+            showConnect('密钥不正确或已失效，请重新填写');
+          } else if (err.status === 0) {
+            showConnect('连不上这个地址：' + state.backend);
+          } else {
+            showConnect('连接失败：' + err.message);
+          }
+        });
+    } else {
+      showConnect('');
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', boot);
+  } else {
+    boot();
+  }
+})();
+</script>
+</body>
+</html>
