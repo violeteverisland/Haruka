@@ -122,6 +122,10 @@ public final class ChatService {
                     // 在读线程里调 api.call 会等一个永远回不来的响应，直接死锁。
                     String text = withForwards(sessionKey, userText, forwardIds);
 
+                    // 群聊里她原本只拿到一串裸文本，连谁在说话都不知道。
+                    // 主人的消息带个前缀，她才知道这是该听的人。
+                    text = Owner.mark(cfg, userId, text);
+
                     // 对方提到头像/长相时，先把头像抓下来附上 —— 她这才算真的"看得见"。
                     List<Path> attachments = attachmentsFor(userId, sender, text);
                     String reply = llm.chat(new ArrayList<>(h), text,
@@ -269,6 +273,10 @@ public final class ChatService {
         // 这一句拦掉那一类输出。
         extra.append("【输出纪律】回复里只写你要对对方说的话本身。"
                 + "不要把思考过程、分析、推理或括号里的自我说明写进回复。");
+        String ownerBlock = Owner.block(cfg);
+        if (!ownerBlock.isEmpty()) {
+            extra.append('\n').append(ownerBlock);
+        }
         if (withAvatar) {
             extra.append('\n')
                     .append("【你看到的】这次附上了发送者**当前**的头像图片，就在这条消息里。")

@@ -52,6 +52,15 @@ public final class Config {
      * 配置键是 {@code bot.wake_words}（老键 {@code bot.trigger_names} 继续认）。
      */
     public volatile List<String> wakeWords = List.of();
+    /**
+     * 主人的 QQ 号（逗号分隔，可以有多个）。空 = 不设置主人。
+     *
+     * <p>设置之后她才知道该听谁的：群聊里她原本只拿到一串裸文本，
+     * 连"谁在说话"都不知道，也就无从谈起谁是她主人。
+     */
+    public volatile List<String> ownerIds = List.of();
+    /** 怎么称呼主人，也是提示里标出主人消息用的前缀。 */
+    public volatile String ownerTitle = "主人";
     public volatile int workers = 4;
 
     /** 群聊里没被 @ 也不叫名字时，是否还会主动接话（靠规则，不额外调模型）。 */
@@ -175,6 +184,18 @@ public final class Config {
             }
         }
         c.wakeWords = List.copyOf(wake);
+        // 主人名单：逗号分隔的 QQ 号（中英文逗号都认）。
+        List<String> owners = new ArrayList<>();
+        for (String id : str(props, "bot.owner_qq", "").split("[,，]")) {
+            String t = id.trim();
+            if (!t.isEmpty()) {
+                owners.add(t);
+            }
+        }
+        c.ownerIds = List.copyOf(owners);
+        String ownerTitle = str(props, "bot.owner_title", c.ownerTitle).trim();
+        // 空标题会让提示里出现「【】」这种残废标记，回落到默认。
+        c.ownerTitle = ownerTitle.isEmpty() ? "主人" : ownerTitle;
         c.workers = Math.max(1, num(props, "bot.workers", c.workers));
 
         c.proactiveEnabled = bool(props, "bot.proactive_enabled", c.proactiveEnabled);
@@ -245,6 +266,8 @@ public final class Config {
         privateEnabled = other.privateEnabled;
         groupRequireAt = other.groupRequireAt;
         wakeWords = other.wakeWords;
+        ownerIds = other.ownerIds;
+        ownerTitle = other.ownerTitle;
         workers = other.workers;
 
         proactiveEnabled = other.proactiveEnabled;

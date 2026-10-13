@@ -478,6 +478,11 @@ public final class WebConsole {
             wake.add(word);
             legacyNames.add(word);
         }
+        ArrayNode owners = bot.putArray("owner_qq");
+        for (String id : cfg.ownerIds) {
+            owners.add(id);
+        }
+        bot.put("owner_title", cfg.ownerTitle);
         bot.put("workers", cfg.workers);
         bot.put("proactive_enabled", cfg.proactiveEnabled);
         bot.put("proactive_on_question", cfg.proactiveOnQuestion);
@@ -600,6 +605,27 @@ public final class WebConsole {
                 }
                 changes.put("bot.wake_words", String.join(",", list));
             }
+            JsonNode ownerNode = bot.path("owner_qq");
+            if (ownerNode.isArray() || ownerNode.isTextual()) {
+                List<String> owners = new ArrayList<>();
+                if (ownerNode.isArray()) {
+                    for (JsonNode node : ownerNode) {
+                        String value = node.asText("").trim();
+                        if (!value.isEmpty()) {
+                            owners.add(value);
+                        }
+                    }
+                } else {
+                    for (String part : ownerNode.asText("").split("[,，]")) {
+                        String value = part.trim();
+                        if (!value.isEmpty()) {
+                            owners.add(value);
+                        }
+                    }
+                }
+                changes.put("bot.owner_qq", String.join(",", owners));
+            }
+            putText(changes, "bot.owner_title", bot, "owner_title");
             putInt(changes, problems, "bot.workers", bot, "workers", 1, 64);
             if (bot.has("proactive_enabled")) {
                 changes.put("bot.proactive_enabled", String.valueOf(bot.path("proactive_enabled").asBoolean()));
@@ -866,7 +892,12 @@ public final class WebConsole {
                     : MemoryPrompt.build(cfg, memory, scope);
 
             boolean drawing = wantImage && cfg.imageEnabled;
-            String extra = block.text();
+            // 身份说明放在记忆前面，和真实聊天链路的顺序保持一致。
+            String extra = Owner.block(cfg);
+            String memoryBlock = block.text();
+            if (!memoryBlock.isEmpty()) {
+                extra = extra.isEmpty() ? memoryBlock : extra + "\n" + memoryBlock;
+            }
             if (drawing) {
                 extra = LlmClients.composeSystem(extra, ImageClient.instruction(cfg.imageMaxPerTurn));
             }
@@ -877,6 +908,8 @@ public final class WebConsole {
                     : persona.compose(extra);
             // 顺带验一下"看头像"：消息里提到头像时也把头像附上。
             List<Path> attachments = attachmentsFor(senderId, text);
+            // 自测也走同一条路径：该加的主人标记就得加，否则测出来的语气和应用不一致。
+            text = Owner.mark(cfg, senderId, text);
             String raw = llm.chat(List.of(), text, system, attachments);
             long replyMs = System.currentTimeMillis() - started;
 

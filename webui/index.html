@@ -1575,6 +1575,18 @@ select:focus { border-color: var(--accent); }
         </div>
 
         <div class="field">
+          <label class="field-label" for="cfgOwnerQq">owner_qq</label>
+          <input type="text" id="cfgOwnerQq" class="mono" placeholder="1907257915">
+          <div class="hint">主人的 QQ 号，多个用逗号分隔。<strong>留空 = 不设置主人</strong>。设置后主人的消息会带【owner_title】前缀交给模型 —— 群里她原本只拿到一串裸文本，连谁在说话都不知道。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgOwnerTitle">owner_title</label>
+          <input type="text" id="cfgOwnerTitle" class="mono" placeholder="主人">
+          <div class="hint">怎么称呼主人，同时也是那个前缀。留空按「主人」处理。</div>
+        </div>
+
+        <div class="field">
           <label class="field-label" for="cfgWorkers">workers</label>
           <input type="number" id="cfgWorkers" min="1" step="1">
         </div>
@@ -2712,6 +2724,9 @@ select:focus { border-color: var(--accent); }
     var wake = Array.isArray(bot.wake_words) ? bot.wake_words
       : (Array.isArray(bot.trigger_names) ? bot.trigger_names : []);
     $('cfgTriggerNames').value = wake.join(', ');
+    var owners = Array.isArray(bot.owner_qq) ? bot.owner_qq : [];
+    $('cfgOwnerQq').value = owners.join(', ');
+    $('cfgOwnerTitle').value = bot.owner_title || '主人';
     $('cfgWorkers').value = bot.workers === undefined ? '' : bot.workers;
     $('cfgProactiveEnabled').checked = !!bot.proactive_enabled;
     $('cfgProactiveOnQuestion').checked = !!bot.proactive_on_question;
@@ -2810,6 +2825,8 @@ select:focus { border-color: var(--accent); }
         private_enabled: $('cfgPrivateEnabled').checked,
         group_require_at: $('cfgGroupRequireAt').checked,
         wake_words: parseWakeWords($('cfgTriggerNames').value),
+        owner_qq: parseWakeWords($('cfgOwnerQq').value),
+        owner_title: $('cfgOwnerTitle').value.trim() || '主人',
         workers: toInt($('cfgWorkers').value),
         proactive_enabled: $('cfgProactiveEnabled').checked,
         proactive_on_question: $('cfgProactiveOnQuestion').checked,
@@ -2892,6 +2909,17 @@ select:focus { border-color: var(--accent); }
     checkInt('cfgMaxTokens', 'llm.max_tokens', 1);
     checkInt('cfgTimeout', 'llm.timeout_seconds', 1);
     checkInt('cfgWorkers', 'bot.workers', 1);
+    // owner_qq 只接受 QQ 号（纯数字）。填了昵称的话主人功能会静默不生效，
+    // 那种"配了但没反应"最难查，所以这里直接拦下。
+    (function () {
+      var ids = parseWakeWords($('cfgOwnerQq').value);
+      for (var i = 0; i < ids.length; i++) {
+        if (!/^\d+$/.test(ids[i])) {
+          bad('cfgOwnerQq', 'bot.owner_qq 只能填 QQ 号（纯数字），请检查「' + ids[i] + '」');
+          return;
+        }
+      }
+    })();
     // memory：inject_limit / extract_min_chars 允许 0
     checkInt('cfgMemInjectLimit', 'memory.inject_limit', 0, 100);
     checkInt('cfgMemExtractMinChars', 'memory.extract_min_chars', 0, 1000);
