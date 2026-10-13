@@ -94,10 +94,24 @@ final class JsonHttp {
         return t.length() > 300 ? t.substring(0, 300) + "..." : t;
     }
 
-    static String joinText(JsonNode parts) {
+    /**
+     * 把回复的 parts 拼成文本。
+     *
+     * <p><b>必须跳过 {@code thought:true} 的片段</b> —— 那是模型的思考草稿，不是回复内容。
+     * 漏掉这一步的症状很显眼：模型把内部推理直接吐给用户，实测见过英文的
+     * "Initial assessment: ..." 顶在正常中文回复前面。
+     *
+     * <p>画图那边早就做了同样的过滤（见 {@link ImageClient}），聊天这边一直漏着 ——
+     * 所以这里特意把方法名写成 joinReplyText，而不是含糊的 joinText：
+     * 方法名一旦看不出"这是回复正文"，下一个人就会顺手把思考片段也拼进来。
+     */
+    static String joinReplyText(JsonNode parts) {
         StringBuilder sb = new StringBuilder();
         if (parts != null && parts.isArray()) {
             for (JsonNode part : parts) {
+                if (part.path("thought").asBoolean(false)) {
+                    continue;
+                }
                 String t = part.path("text").asText("");
                 if (!t.isEmpty()) {
                     if (sb.length() > 0) {

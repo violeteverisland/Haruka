@@ -111,10 +111,13 @@ public final class GeminiLlmClient implements LlmClient {
             throw new RuntimeException("Gemini 返回里没有内容 (finishReason="
                     + candidate.path("finishReason").asText("?") + "): " + JsonHttp.abbreviate(root.toString()));
         }
-        String text = JsonHttp.joinText(parts);
+        // 只取回复正文；thought:true 的思考草稿会被丢掉，否则模型的内部推理会
+        // 直接发给用户（实测见过英文的 "Initial assessment: ..." 顶在前面）。
+        String text = JsonHttp.joinReplyText(parts);
         if (text.isEmpty()) {
             throw new RuntimeException("Gemini 返回了空文本 (finishReason="
-                    + candidate.path("finishReason").asText("?") + ")");
+                    + candidate.path("finishReason").asText("?")
+                    + "；parts 里只有思考草稿？)");
         }
         return text;
     }
