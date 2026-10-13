@@ -138,6 +138,8 @@ llm.max_tokens=2048            # Gemini 的思考 token 也算在里面，给太
 bot.private_enabled=true
 bot.wake_words=Haruka,haruka   # 正文里出现就叫醒她，不需要 @
 bot.group_require_at=true      # 群里是否要求被叫到；false = 每条都回
+bot.owner_qq=                  # 主人的 QQ 号，逗号分隔；留空 = 不设主人
+bot.owner_title=主人           # 怎么称呼主人，同时也是消息前缀
 bot.proactive_enabled=false    # 主动接话（像提问的群消息）
 bot.proactive_cooldown_seconds=60
 bot.proactive_max_per_hour=6
@@ -176,6 +178,7 @@ avatar.look_keywords=头像,长相,样子,照片,自拍
 - **画图**：她自己决定，画好后作为单独一条图片消息发出来（十几秒）。
 - **看头像**：消息里提到「头像 / 长相 / 样子」时，她能真的看到发送者头像。
 - **读合并转发**：**先转发那段聊天记录**（不用 @），**再 @ 她问** —— QQ 里没法在同一条消息里同时做这两件事。
+- **认主人**：把主人的 QQ 填进 `bot.owner_qq` 之后，主人的消息会带 `【主人】` 前缀交给她，所以她知道该听谁的。没填的话她只知道消息内容、不知道是谁说的。
 
 ## 常见问题
 
