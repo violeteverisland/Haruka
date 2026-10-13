@@ -418,6 +418,44 @@ Diana 的做法是每条没被点名的群消息都额外调一次**接话评分
 
 后面想加，建议按 Diana 的顺序补：**先持久化队列 → 再触发门禁 → 再接话评分 → 最后才是工具。**
 
+## 凭据安全
+
+这个项目里有三样东西**绝对不能进版本库**：`llm.api_key`、`server.access_token`、`web.secret`。它们都在配置文件里，所以规则很简单：
+
+> **仓库里只有 `config.example.properties`（模板）。你自己那份 `config.properties` 永远不会被跟踪。**
+
+`.gitignore` 的做法是**默认挡住所有 `*.properties`，只放行模板**：
+
+```gitignore
+*.properties
+!config.example.properties
+```
+
+反过来写规则是有原因的：程序会在**首次启动时把生成的 `server.access_token` 写回**你正在用的那个配置文件，而你还可能给它起任何名字。逐个列举文件名一定会漏 —— 这个仓库就真的这么漏过一次（好在只进了未推送的提交，推送前清掉了）。
+
+### 提交前守卫
+
+`.githooks/pre-commit` 会拦住任何带凭据的提交。但 hooks 不会被 `git clone` 带走，所以**每个 clone 要各启用一次**：
+
+```bat
+git config core.hooksPath .githooks
+```
+
+它会拒绝这些内容：
+
+- 非 `config.example.properties` 的 `.properties` 文件（它们会被写入真实凭据）
+- 有值的 `server.access_token` / `llm.api_key` / `web.secret`
+- 形如 `sk-…` 的 API Key
+- Windows 用户目录的绝对路径（`C:\Users\你的名字\…`，会泄漏本机用户名）
+
+确认是误报可以 `git commit --no-verify` 跳过。
+
+### 如果不小心把凭据提交了
+
+**只要还没推送就还有救**：`git reset --soft origin/main` 之后重新提交，凭据就不会进入待推送历史（本项目就是这么修的一次）。
+
+**一旦推上去了，顺序不能反**：先**换掉那把凭据**（公开过的密钥一律视为已失窃），再考虑改写历史。只改历史而不换密钥等于没修。
+
 ## 许可证与致谢
 
 本项目以 **MIT** 许可证发布，全文见 [LICENSE](LICENSE)。

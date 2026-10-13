@@ -1,16 +1,33 @@
+# ============================================================
+# 凭据安全：这个仓库里**唯一**允许进版本库的配置文件是模板
+# config.example.properties。
+#
+# 为什么反过来写规则、而不是逐个列举文件名：
+#   - 首次启动会把生成的 server.access_token **写回**你正在用的那个配置文件
+#   - 你还可能给它起任何名字（config.local.properties、haruka.properties…）
+# 列举法一定会漏，漏一次的代价就是凭据进了公开仓库。
+# 所以这里默认挡住所有 .properties，只放行模板。
+# ============================================================
+*.properties
+!config.example.properties
+
+# 常见凭据文件的兜底（本项目目前没有，但防止以后顺手加进来）
+.env
+.env.*
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+secrets.*
+credentials.*
+
 # 构建产物
 target/
 *.class
+*.jar
 *.log
-
-# 本地配置：真实 API Key / access_token 都在里面，绝对不要提交。
-# 仓库里的模板是 config.example.properties；你复制出来的 config.properties
-# 被下面这条挡住。必须挡住 —— 首次启动会把生成的 access_token 写回这个文件，
-# 只要它被跟踪，凭据迟早会被 commit 进去。
-config.properties
-config.*.properties
-# 模板必须能进仓库（上面那条通配符会连它一起挡掉，所以这里再放行）
-!config.example.properties
 
 # 人设：这是你自己的角色设定，不该进公开仓库。
 # 仓库里给的是 persona.example.md（示例），复制一份改名即可。
@@ -21,9 +38,12 @@ haruka.md
 # 改名前的旧产物备份
 backup/
 
-# 长期记忆数据库：这是她和你的聊天数据，属于个人数据，不该进版本库
+# 长期记忆数据库：这是她和你的聊天数据，属于个人数据，不该进版本库。
+# data/ 下面还有头像缓存和画过的图，同样属于本地数据。
 data/
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
+*.sqlite
+*.sqlite3
