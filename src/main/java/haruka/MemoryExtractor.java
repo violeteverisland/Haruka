@@ -121,7 +121,7 @@ public final class MemoryExtractor {
             if (facts.isEmpty()) {
                 if (mustRemember) {
                     // 模型没给出候选也不要紧：把这句话本身存下来，绝不让承诺落空。
-                    long id = store.add(scope, sender, stripRememberLead(question), "auto");
+                    long id = store.addIfAbsent(scope, sender, stripRememberLead(question), "auto");
                     if (id > 0) {
                         log.info("对方明确要求记住，兜底存下 1 条（会话 {}）", scope);
                         return 1;
@@ -142,7 +142,9 @@ public final class MemoryExtractor {
                     continue;
                 }
                 String subject = fact.subject() == null || fact.subject().isBlank() ? sender : fact.subject().trim();
-                long id = store.add(scope, subject, fact.content(), "auto");
+                // addIfAbsent：只有真的新写入才算"记住了"。用 add 的话，同一件事被重新抽到时
+                // 也会返回原有 id，于是日志反复说"记住了 N 条"，而库里一条新记忆都没有。
+                long id = store.addIfAbsent(scope, subject, fact.content(), "auto");
                 if (id > 0) {
                     added++;
                 }

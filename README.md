@@ -140,6 +140,10 @@ bot.wake_words=Haruka,haruka   # 正文里出现就叫醒她，不需要 @
 bot.group_require_at=true      # 群里是否要求被叫到；false = 每条都回
 bot.owner_qq=                  # 主人的 QQ 号，逗号分隔；留空 = 不设主人
 bot.owner_title=主人           # 怎么称呼主人，同时也是消息前缀
+bot.affection=0                # 好感度 0-100；到 100 她会向你表白（目前只手动改）
+bot.spouse_qq=                 # 配偶 QQ；填上 = 已结婚：写进记忆并解除审查
+bot.moderation_enabled=true    # 发言审查：对所有人默认生效，主人也不例外
+bot.moderation_prompt=         # 审查文案，控制台「行为」页可改
 bot.proactive_enabled=false    # 主动接话（像提问的群消息）
 bot.proactive_cooldown_seconds=60
 bot.proactive_max_per_hour=6
@@ -179,6 +183,7 @@ avatar.look_keywords=头像,长相,样子,照片,自拍
 - **看头像**：消息里提到「头像 / 长相 / 样子」时，她能真的看到发送者头像。
 - **读合并转发**：**先转发那段聊天记录**（不用 @），**再 @ 她问** —— QQ 里没法在同一条消息里同时做这两件事。
 - **认主人**：把主人的 QQ 填进 `bot.owner_qq` 之后，主人的消息会带 `【主人】` 前缀交给她，所以她知道该听谁的。没填的话她只知道消息内容、不知道是谁说的。
+- **认配偶**：`bot.spouse_qq` 填上 = 已结婚。结婚会自动写进长期记忆（跟着 `.db` 走），并且**只有这个号**不再套用发言审查。好感度（`bot.affection`）到 100 她会主动表白 —— 目前只支持手动改。
 
 ## 常见问题
 

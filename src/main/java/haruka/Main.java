@@ -173,6 +173,11 @@ public final class Main {
         if (memory != null) {
             log.info("长期记忆: {}（自动抽取={}，每次注入上限={} 条）",
                     memory.path(), cfg.memoryExtractEnabled, cfg.memoryInjectLimit);
+            // 启动时补写一次"结婚"：这样即使她还没收到任何消息，这条也已经在记忆里了。
+            // 记忆库按内容指纹去重，所以重启多少次都只会有一条。
+            if (Relation.ensureMarriageMemory(cfg, memory)) {
+                log.info("[关系] 结婚已写入长期记忆（配偶 QQ {}）", cfg.spouseQq.trim());
+            }
         } else if (cfg.memoryEnabled) {
             log.warn("长期记忆不可用（数据库打不开），机器人其余功能不受影响");
         } else {

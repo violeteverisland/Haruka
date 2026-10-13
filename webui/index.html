@@ -1591,6 +1591,37 @@ select:focus { border-color: var(--accent); }
           <input type="number" id="cfgWorkers" min="1" step="1">
         </div>
 
+        <div class="sub-title">关系与审查</div>
+
+        <div class="field">
+          <label class="field-label" for="cfgAffection">affection</label>
+          <input type="number" id="cfgAffection" min="0" max="100" step="1">
+          <div class="hint">好感度。到 100 她会向你表白。目前只支持手动改，不会从聊天里增长。</div>
+        </div>
+
+        <div class="field">
+          <label class="field-label" for="cfgSpouseQq">spouse_qq</label>
+          <input type="text" id="cfgSpouseQq" class="mono" inputmode="numeric" placeholder="留空 = 未结婚" spellcheck="false">
+          <div class="hint">
+            配偶的 QQ 号。<strong>填上 = 已结婚</strong>：会写进长期记忆，并解除下面那条审查。
+            这是解除审查的<strong>唯一</strong>开关 —— 由代码按 QQ 号判断，不靠提示词，所以骗不过去。
+          </div>
+        </div>
+
+        <div class="switch-row">
+          <div>
+            <div class="switch-label">moderation_enabled</div>
+            <div class="hint" style="margin-top:0">普通聊天的发言审查。<strong>对所有人默认生效，主人也不例外</strong>，唯一的例外是上面登记的配偶。</div>
+          </div>
+          <label class="switch"><input type="checkbox" id="cfgModerationEnabled"><span class="track"></span></label>
+        </div>
+
+        <div class="field" style="margin-top:12px">
+          <label class="field-label" for="cfgModerationPrompt">moderation_prompt</label>
+          <textarea id="cfgModerationPrompt" class="mono" rows="5" spellcheck="false"></textarea>
+          <div class="hint">审查文案，可以改成任何你想要的。配偶不套用这条。</div>
+        </div>
+
         <div class="sub-title">主动接话（不用 @ 也能被唤醒）</div>
 
         <div class="switch-row">
@@ -2727,6 +2758,13 @@ select:focus { border-color: var(--accent); }
     var owners = Array.isArray(bot.owner_qq) ? bot.owner_qq : [];
     $('cfgOwnerQq').value = owners.join(', ');
     $('cfgOwnerTitle').value = bot.owner_title || '主人';
+    // 关系与审查
+    $('cfgAffection').value = bot.affection === undefined ? '' : bot.affection;
+    $('cfgSpouseQq').value = bot.spouse_qq || '';
+    // 默认是「开」：后端没给这个字段时按开启处理，宁可多审不可漏审
+    $('cfgModerationEnabled').checked = bot.moderation_enabled !== false;
+    // 多行审查文案原样灌入，不做 trim（内部换行要保留）
+    $('cfgModerationPrompt').value = bot.moderation_prompt || '';
     $('cfgWorkers').value = bot.workers === undefined ? '' : bot.workers;
     $('cfgProactiveEnabled').checked = !!bot.proactive_enabled;
     $('cfgProactiveOnQuestion').checked = !!bot.proactive_on_question;
@@ -2827,6 +2865,11 @@ select:focus { border-color: var(--accent); }
         wake_words: parseWakeWords($('cfgTriggerNames').value),
         owner_qq: parseWakeWords($('cfgOwnerQq').value),
         owner_title: $('cfgOwnerTitle').value.trim() || '主人',
+        affection: toInt($('cfgAffection').value),
+        spouse_qq: $('cfgSpouseQq').value.trim(),
+        moderation_enabled: $('cfgModerationEnabled').checked,
+        // 多行文案原样回传：不 trim，内部换行与中文标点都要保留
+        moderation_prompt: $('cfgModerationPrompt').value,
         workers: toInt($('cfgWorkers').value),
         proactive_enabled: $('cfgProactiveEnabled').checked,
         proactive_on_question: $('cfgProactiveOnQuestion').checked,
@@ -2931,6 +2974,12 @@ select:focus { border-color: var(--accent); }
     // bot 主动接话
     checkInt('cfgProactiveCooldown', 'bot.proactive_cooldown_seconds', 0, 3600);
     checkInt('cfgProactiveMaxPerHour', 'bot.proactive_max_per_hour', 1, 120);
+    // bot 关系与审查
+    checkInt('cfgAffection', 'bot.affection', 0, 100);
+    var spouseRaw = $('cfgSpouseQq').value.trim();
+    if (spouseRaw !== '' && !/^\d+$/.test(spouseRaw)) {
+      bad('cfgSpouseQq', 'bot.spouse_qq 只能是 QQ 号（纯数字）');
+    }
     // avatar
     checkInt('cfgAvatarSize', 'avatar.size', 40, 640);
     checkInt('cfgAvatarCacheMinutes', 'avatar.cache_minutes', 0, 10080);

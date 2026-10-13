@@ -132,6 +132,46 @@ public final class MemoryStore implements AutoCloseable {
     }
 
     /**
+     * 只在**真的新建**时返回 id；已存在同一条时返回 0。
+     *
+     * <p>为什么需要它：{@link #add} 在去重命中时返回的是**原有 id**（那是它注释里写明的行为），
+     * 所以调用方没法用 {@code id > 0} 判断"这次到底新写了没有"。混用的后果很具体：
+     * 抽取器会反复报"记住了 N 条"其实一条都没新增，结婚记录每次启动都说"已写入"，
+     * 重复导入也会报"导入 N 条、跳过 0 条"。
+     *
+     * <p>所有方法都在同一个锁上，所以这里"先查再写"不存在竞态。
+     */
+    public synchronized long addIfAbsent(String scope, String subject, String content, String source) {
+        if (!available) {
+            return 0;
+        }
+        String text = content == null ? "" : content.trim();
+        if (text.isEmpty()) {
+            return 0;
+        }
+        String cleanScope = scope == null || scope.isBlank() ? "global" : scope.trim();
+        if (exists(cleanScope, text)) {
+            return 0;
+        }
+        long id = add(scope, subject, content, source);
+        return Math.max(id, 0);
+    }
+
+    /** 这个 scope 里有没有内容指纹相同的记忆。查不到或出错都返回 false —— 交给 add 自己去重。 */
+    private boolean exists(String scope, String content) {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT 1 FROM memories WHERE fingerprint = ? LIMIT 1")) {
+            ps.setString(1, fingerprint(scope, content));
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        } catch (SQLException e) {
+            log.warn("查询记忆是否存在失败: {}", Log.rootMessage(e));
+            return false;
+        }
+    }
+
+    /**
      * 记一条。已存在同一条（同 scope 且内容规范化后一致）就只更新时间和来源，返回原有 id。
      *
      * @return 记忆 id；库不可用或内容为空时返回 -1

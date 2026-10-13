@@ -60,6 +60,9 @@ public final class ChatService {
     /** 取合并转发正文的能力，由 OneBotServer 在构造完之后注入。 */
     private volatile Function<String, String> forwardResolver;
 
+    /** 上一次看到的配偶 QQ，用来只在配置变化时补写结婚记忆。 */
+    private volatile String lastSpouse = "";
+
     /** 每个会话最近一次"先转发过来、还没被问到"的聊天记录。 */
     private final ConcurrentHashMap<String, CachedForward> recentForwards = new ConcurrentHashMap<>();
     /** 存下的转发记录多久之内还算数。 */
@@ -126,10 +129,13 @@ public final class ChatService {
                     // 主人的消息带个前缀，她才知道这是该听的人。
                     text = Owner.mark(cfg, userId, text);
 
+                    // 结婚要写进长期记忆。配置没变就早退，所以这句每轮跑也不花钱。
+                    recordMarriageIfNeeded();
+
                     // 对方提到头像/长相时，先把头像抓下来附上 —— 她这才算真的"看得见"。
                     List<Path> attachments = attachmentsFor(userId, sender, text);
                     String reply = llm.chat(new ArrayList<>(h), text,
-                            systemPrompt(sessionKey, !attachments.isEmpty()), attachments);
+                            systemPrompt(sessionKey, userId, !attachments.isEmpty()), attachments);
 
                     List<DrawRequest> draws = new ArrayList<>();
                     String visible = extractDraws(reply, cfg.imageMaxPerTurn, draws);
@@ -263,19 +269,47 @@ public final class ChatService {
     }
 
     /**
-     * 拼出这一轮的系统提示：看见的东西 → 人设 → 记忆 → 画图能力。
-     * 顺序有意义：先说这次手上有什么，再是"我是谁"、"我知道什么"、"我能做什么"。
+     * 配偶配置一变就把"结婚"写进长期记忆。
+     *
+     * <p>每轮都会调用，但配置没变时立刻返回 —— 不查库、没有开销。记忆内容是固定句子，
+     * 靠记忆库的内容指纹去重，所以反复调用也只会真正写进去一次。
      */
-    private String systemPrompt(String sessionKey, boolean withAvatar) {
+    private void recordMarriageIfNeeded() {
+        String spouse = cfg.spouseQq == null ? "" : cfg.spouseQq.trim();
+        if (spouse.equals(lastSpouse)) {
+            return;
+        }
+        lastSpouse = spouse;
+        if (spouse.isEmpty()) {
+            // 只解除"配偶"这个代码状态；已经写进记忆的那条不自动删 ——
+            // 记忆归她，要删请在控制台「记忆」页删。
+            log.info("[关系] 配偶已清空（审查恢复对所有人生效；已写入的结婚记忆保留）");
+            return;
+        }
+        if (Relation.ensureMarriageMemory(cfg, memory)) {
+            log.info("[关系] 结婚已写入长期记忆（配偶 QQ {}）", spouse);
+        }
+    }
+
+    /**
+     * 拼出这一轮的系统提示：输出纪律 → 身份 → 发言尺度 → 心意 → 头像 → 记忆 → 画图能力。
+     * 顺序有意义：先立规矩和"这是谁"，再是"我手上有什么"和"我知道什么"。
+     */
+    private String systemPrompt(String sessionKey, String userId, boolean withAvatar) {
         StringBuilder extra = new StringBuilder();
         // 代码自己追加的护栏，不写进用户的人设文件。
         // 见过一次模型把内部推理直接当回复发出来（还是英文的 "The user's request references…"），
         // 这一句拦掉那一类输出。
         extra.append("【输出纪律】回复里只写你要对对方说的话本身。"
                 + "不要把思考过程、分析、推理或括号里的自我说明写进回复。");
-        String ownerBlock = Owner.block(cfg);
-        if (!ownerBlock.isEmpty()) {
-            extra.append('\n').append(ownerBlock);
+        // 身份与发言尺度都由代码给（权威），不靠消息正文里说了什么。
+        for (String block : new String[] {
+                Owner.identity(cfg, userId),
+                Relation.safetyBlock(cfg, userId),
+                Relation.confessionHint(cfg, userId) }) {
+            if (!block.isEmpty()) {
+                extra.append('\n').append(block);
+            }
         }
         if (withAvatar) {
             extra.append('\n')

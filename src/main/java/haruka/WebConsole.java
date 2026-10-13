@@ -483,6 +483,10 @@ public final class WebConsole {
             owners.add(id);
         }
         bot.put("owner_title", cfg.ownerTitle);
+        bot.put("affection", cfg.affection);
+        bot.put("spouse_qq", cfg.spouseQq == null ? "" : cfg.spouseQq);
+        bot.put("moderation_enabled", cfg.moderationEnabled);
+        bot.put("moderation_prompt", cfg.moderationPrompt == null ? "" : cfg.moderationPrompt);
         bot.put("workers", cfg.workers);
         bot.put("proactive_enabled", cfg.proactiveEnabled);
         bot.put("proactive_on_question", cfg.proactiveOnQuestion);
@@ -626,6 +630,12 @@ public final class WebConsole {
                 changes.put("bot.owner_qq", String.join(",", owners));
             }
             putText(changes, "bot.owner_title", bot, "owner_title");
+            putInt(changes, problems, "bot.affection", bot, "affection", 0, 100);
+            putText(changes, "bot.spouse_qq", bot, "spouse_qq");
+            if (bot.has("moderation_enabled")) {
+                changes.put("bot.moderation_enabled", String.valueOf(bot.path("moderation_enabled").asBoolean()));
+            }
+            putText(changes, "bot.moderation_prompt", bot, "moderation_prompt");
             putInt(changes, problems, "bot.workers", bot, "workers", 1, 64);
             if (bot.has("proactive_enabled")) {
                 changes.put("bot.proactive_enabled", String.valueOf(bot.path("proactive_enabled").asBoolean()));
@@ -892,8 +902,20 @@ public final class WebConsole {
                     : MemoryPrompt.build(cfg, memory, scope);
 
             boolean drawing = wantImage && cfg.imageEnabled;
-            // 身份说明放在记忆前面，和真实聊天链路的顺序保持一致。
-            String extra = Owner.block(cfg);
+            // 身份与发言尺度放在记忆前面，和真实聊天链路保持同样的顺序。
+            StringBuilder head = new StringBuilder();
+            for (String b : new String[] {
+                    Owner.identity(cfg, senderId),
+                    Relation.safetyBlock(cfg, senderId),
+                    Relation.confessionHint(cfg, senderId) }) {
+                if (!b.isEmpty()) {
+                    if (head.length() > 0) {
+                        head.append('\n');
+                    }
+                    head.append(b);
+                }
+            }
+            String extra = head.toString();
             String memoryBlock = block.text();
             if (!memoryBlock.isEmpty()) {
                 extra = extra.isEmpty() ? memoryBlock : extra + "\n" + memoryBlock;
@@ -1455,7 +1477,9 @@ public final class WebConsole {
             }
             String scope = node.path("scope").asText("").trim();
             String source = node.path("source").asText("").trim();
-            long id = memory.add(scope.isEmpty() ? "global" : scope,
+            // addIfAbsent："导入 N 条"必须是真新增；用 add 的话重复导入同一份文件
+            // 也会报"导入 N 条、跳过 0 条"。
+            long id = memory.addIfAbsent(scope.isEmpty() ? "global" : scope,
                     node.path("subject").asText(""), content,
                     source.isEmpty() ? "import" : source);
             if (id > 0) {
