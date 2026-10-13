@@ -5,18 +5,20 @@
 # 启用（每个 clone 各做一次；hooks 不会被 clone 带走）：
 #     git config core.hooksPath .githooks
 #
-# 为什么需要它：config.properties 会被程序写入生成的 server.access_token，
-# 而 llm.api_key 也是明文。只靠 .gitignore 挡不住 `git add -f`、
-# 改名后的新配置文件、以及"模板被当成 live 配置用"这类情况 ——
-# 这个仓库就真的这么漏过一次。守卫是最后一道，也是唯一不依赖记性的一道。
+# 分两类检查，作用域不同：
+#   1) 只看 .properties 文件 —— 凭据字段有没有值、以及是不是模板之外的配置文件。
+#      文档里写 llm.api_key=你的 Key 这类示例很常见，全局检查会天天误报。
+#   2) 看所有文件 —— 形如 sk-… 的 Key、Windows 用户目录绝对路径。
+#      这两类出现在任何文件里都不是好事，包括 README。
 #
 # 误报时可以 git commit --no-verify 跳过，但请先确认内容安全。
 # ============================================================
 
 bad=0
+staged=$(git diff --cached --name-only --diff-filter=ACM)
 
 # ---- 1. 只有模板 .properties 允许进仓库 ----
-for f in $(git diff --cached --name-only --diff-filter=ACM); do
+for f in $staged; do
   case "$f" in
     *.properties)
       if [ "$f" != "config.example.properties" ]; then
@@ -28,34 +30,33 @@ for f in $(git diff --cached --name-only --diff-filter=ACM); do
   esac
 done
 
-# 只检查本次新增的行（以 + 开头，去掉 +++ 头）
-added=$(git diff --cached -U0 --no-color | sed -n 's/^+//p')
-
-# ---- 2. 凭据字段不允许有值 ----
-if echo "$added" | grep -E '^[[:space:]]*server\.access_token=[^[:space:]]' >/dev/null 2>&1; then
-  echo "pre-commit: 拒绝提交 —— server.access_token 不能有值（模板里必须是空的）" >&2
-  echo "            程序会在首次启动时生成它并写回配置，那个文件不该被跟踪。" >&2
-  bad=1
+# ---- 2. 凭据字段不允许有值（只查 .properties）----
+props=$(echo "$staged" | grep -E '\.properties$')
+if [ -n "$props" ]; then
+  added_props=$(git diff --cached -U0 --no-color -- $props | sed -n 's/^+//p')
+  if echo "$added_props" | grep -E '^[[:space:]]*server\.access_token=[^[:space:]]' >/dev/null 2>&1; then
+    echo "pre-commit: 拒绝提交 —— server.access_token 不能有值（模板里必须是空的）" >&2
+    bad=1
+  fi
+  if echo "$added_props" | grep -E '^[[:space:]]*llm\.api_key=[^[:space:]]' | grep -v 'CHANGE_ME$' >/dev/null 2>&1; then
+    echo "pre-commit: 拒绝提交 —— llm.api_key 只允许是空值或 CHANGE_ME" >&2
+    bad=1
+  fi
+  if echo "$added_props" | grep -E '^[[:space:]]*web\.secret=[^[:space:]]' >/dev/null 2>&1; then
+    echo "pre-commit: 拒绝提交 —— web.secret 有值；模板里它应该是空的" >&2
+    bad=1
+  fi
 fi
 
-if echo "$added" | grep -E '^[[:space:]]*llm\.api_key=[^[:space:]]' | grep -v 'CHANGE_ME$' >/dev/null 2>&1; then
-  echo "pre-commit: 拒绝提交 —— llm.api_key 只允许是空值或 CHANGE_ME" >&2
-  bad=1
-fi
-
-if echo "$added" | grep -E '^[[:space:]]*web\.secret=[^[:space:]]' >/dev/null 2>&1; then
-  echo "pre-commit: 拒绝提交 —— web.secret 有值；模板里它应该是空的" >&2
-  bad=1
-fi
-
-# ---- 3. 形如 API Key 的字符串 ----
-if echo "$added" | grep -E 'sk-[A-Za-z0-9_-]{16,}' >/dev/null 2>&1; then
+# ---- 3. 所有文件：形如 API Key 的字符串 ----
+added_all=$(git diff --cached -U0 --no-color | sed -n 's/^+//p')
+if echo "$added_all" | grep -E 'sk-[A-Za-z0-9_-]{16,}' >/dev/null 2>&1; then
   echo "pre-commit: 拒绝提交 —— 出现形如 sk-… 的 API Key" >&2
   bad=1
 fi
 
-# ---- 4. 本机路径 / 个人标识（曾经的泄漏点）----
-if echo "$added" | grep -E 'C:\\\\?Users\\\\?[A-Za-z0-9._-]+' >/dev/null 2>&1; then
+# ---- 4. 所有文件：Windows 用户目录绝对路径（会泄漏本机用户名）----
+if echo "$added_all" | grep -E 'C:\\\\?Users\\\\?[A-Za-z0-9._-]+' >/dev/null 2>&1; then
   echo "pre-commit: 拒绝提交 —— 出现 Windows 用户目录绝对路径（会泄漏本机用户名）" >&2
   bad=1
 fi
