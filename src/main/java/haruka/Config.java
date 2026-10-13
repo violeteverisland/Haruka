@@ -62,16 +62,7 @@ public final class Config {
     /** 怎么称呼主人，也是提示里标出主人消息用的前缀。 */
     public volatile String ownerTitle = "主人";
 
-    /** 好感度 0-100。到 100 她会表白。目前只支持手动改，不从聊天里增长。 */
-    public volatile int affection = 0;
-    /**
-     * 配偶的 QQ 号。填上 = 已结婚。
-     *
-     * <p>这是"解除审查"的**唯一**开关，而且由代码按 QQ 号校验 —— 不靠提示词判断。
-     * 靠提示词判断的门槛等于没有门槛：说服模型比伪造一个 QQ 号容易得多。
-     */
-    public volatile String spouseQq = "";
-    /** 普通聊天的发言审查开关。对所有人默认生效，只有配偶例外（代码判断）。 */
+    /** 普通聊天的发言审查开关。对所有人默认生效，只有配偶例外（看画像里的 spouse 标记）。 */
     public volatile boolean moderationEnabled = true;
     /** 审查文案。默认给一版，控制台里可以改成任何你想要的。 */
     public volatile String moderationPrompt =
@@ -213,8 +204,6 @@ public final class Config {
         String ownerTitle = str(props, "bot.owner_title", c.ownerTitle).trim();
         // 空标题会让提示里出现「【】」这种残废标记，回落到默认。
         c.ownerTitle = ownerTitle.isEmpty() ? "主人" : ownerTitle;
-        c.affection = Math.max(0, Math.min(100, num(props, "bot.affection", c.affection)));
-        c.spouseQq = str(props, "bot.spouse_qq", c.spouseQq).trim();
         c.moderationEnabled = bool(props, "bot.moderation_enabled", c.moderationEnabled);
         c.moderationPrompt = str(props, "bot.moderation_prompt", c.moderationPrompt);
         c.workers = Math.max(1, num(props, "bot.workers", c.workers));
@@ -289,8 +278,6 @@ public final class Config {
         wakeWords = other.wakeWords;
         ownerIds = other.ownerIds;
         ownerTitle = other.ownerTitle;
-        affection = other.affection;
-        spouseQq = other.spouseQq;
         moderationEnabled = other.moderationEnabled;
         moderationPrompt = other.moderationPrompt;
         workers = other.workers;

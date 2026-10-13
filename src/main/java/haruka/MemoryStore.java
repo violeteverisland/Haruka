@@ -28,7 +28,12 @@ import java.util.Locale;
 public final class MemoryStore implements AutoCloseable {
 
     private static final Log log = Log.get(MemoryStore.class);
-    private static final int SCHEMA_VERSION = 1;
+    private static final int SCHEMA_VERSION = 2;
+
+    /** 一个人的画像。她据此知道谁是谁。 */
+    public record Profile(String qq, String name, int affection, boolean spouse, String note,
+                          long firstSeen, long lastSeen, int messages) {
+    }
 
     /** 一条记忆。scope 形如 {@code private:123456} / {@code group:987654} / {@code global}。 */
     public record Memory(long id, String scope, String subject, String content, String source,
@@ -94,9 +99,97 @@ public final class MemoryStore implements AutoCloseable {
             st.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_memories_fp ON memories(fingerprint)");
             st.execute("CREATE INDEX IF NOT EXISTS idx_memories_scope ON memories(scope, active, updated_at DESC)");
             st.execute("CREATE TABLE IF NOT EXISTS meta (k TEXT PRIMARY KEY, v TEXT NOT NULL)");
+            // 人物画像：她该知道谁是谁。好感度与婚姻状态按人存，所以只能放这里 ——
+            // 配置文件的 key=value 存不下任意多个人的数据。
+            st.execute("""
+                    CREATE TABLE IF NOT EXISTS profiles (
+                      qq         TEXT PRIMARY KEY,
+                      name       TEXT    NOT NULL DEFAULT '',
+                      affection  INTEGER NOT NULL DEFAULT 0,
+                      spouse     INTEGER NOT NULL DEFAULT 0,
+                      note       TEXT    NOT NULL DEFAULT '',
+                      first_seen INTEGER NOT NULL,
+                      last_seen  INTEGER NOT NULL,
+                      messages   INTEGER NOT NULL DEFAULT 0
+                    )""");
         }
-        putMeta("schema_version", String.valueOf(SCHEMA_VERSION));
+        boolean migrated = migrate(readVersion());
+        if (migrated) {
+            putMeta("schema_version", String.valueOf(SCHEMA_VERSION));
+        } else {
+            // 迁移没成功就先别写版本号，下次启动再试。
+            log.warn("模式迁移未完成，本次不写 schema_version（下次启动重试）");
+        }
         putMetaIfAbsent("created_at", String.valueOf(System.currentTimeMillis()));
+    }
+
+    /**
+     * 读模式版本。**不能用 {@link #meta}** —— 它在 available 置位前会返回兜底值，
+     * 而迁移正好发生在置位之前。
+     */
+    private int readVersion() {
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT v FROM meta WHERE k = 'schema_version'")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return Integer.parseInt(rs.getString(1).trim());
+                }
+            }
+        } catch (Exception e) {
+            // 全新库（meta 刚建、还没有这一行），或版本号读不出来 —— 都当作已是最新
+        }
+        return SCHEMA_VERSION;
+    }
+
+    /**
+     * 版本迁移。只做改名，不删任何数据；失败也不影响记忆功能本身。
+     *
+     * <p><b>v1 -&gt; v2：记忆作用域从「会话」改成「人」。</b>私聊本来就是一个人的会话，
+     * 所以 {@code private:&lt;qq&gt;} 改名成 {@code person:&lt;qq&gt;}；群聊的 {@code group:&lt;gid&gt;}
+     * 保持不动 —— 那是"关于这个群"的事，不是关于某个人的。
+     *
+     * <p><b>改名必须同时重算指纹。</b>指纹是 scope + 内容的哈希，只改 scope 不改指纹的话，
+     * 以后同一句话会被算成新指纹、当成新记忆重复写进去。
+     *
+     * @return 是否迁移成功（false 表示下次启动应该重试）
+     */
+    private boolean migrate(int from) {
+        if (from >= 2) {
+            return true;
+        }
+        try {
+            List<long[]> ids = new ArrayList<>();
+            List<String> scopes = new ArrayList<>();
+            List<String> contents = new ArrayList<>();
+            try (PreparedStatement ps = connection.prepareStatement(
+                    "SELECT id, scope, content FROM memories WHERE scope LIKE 'private:%'");
+                 ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    ids.add(new long[] { rs.getLong(1) });
+                    scopes.add("person:" + rs.getString(2).substring("private:".length()));
+                    contents.add(rs.getString(3));
+                }
+            }
+            if (!ids.isEmpty()) {
+                try (PreparedStatement up = connection.prepareStatement(
+                        "UPDATE memories SET scope = ?, fingerprint = ? WHERE id = ?")) {
+                    for (int i = 0; i < ids.size(); i++) {
+                        up.setString(1, scopes.get(i));
+                        up.setString(2, fingerprint(scopes.get(i), contents.get(i)));
+                        up.setLong(3, ids.get(i)[0]);
+                        up.addBatch();
+                    }
+                    up.executeBatch();
+                }
+                log.info("记忆作用域迁移完成：{} 条 private:* -> person:*", ids.size());
+            }
+            return true;
+        } catch (Exception e) {
+            // 迁移失败不能让整个记忆功能不可用：老数据原样留着，注入侧同时认老作用域，
+            // 所以旧的 private:* 记忆照样会被用上。
+            log.warn("记忆作用域迁移失败（功能不受影响，下次启动重试）: {}", Log.rootMessage(e));
+            return false;
+        }
     }
 
     private void putMeta(String key, String value) throws SQLException {
@@ -228,25 +321,178 @@ public final class MemoryStore implements AutoCloseable {
         }
     }
 
-    /** 给某个会话取要注入 prompt 的记忆：本会话的 + 全局的，按命中次数和最近更新排序。 */
-    public synchronized List<Memory> forInjection(String scope, int limit) {
+    /**
+     * 给一次对话取要注入 prompt 的记忆。
+     *
+     * <p>作用域可以给多个（例如「这个人」+「这个群」+「全局」），按命中次数和最近更新排序。
+     * 重复和空值会被忽略。
+     */
+    public synchronized List<Memory> forInjection(List<String> scopes, int limit) {
         if (!available || limit <= 0) {
             return List.of();
         }
-        String s = scope == null || scope.isBlank() ? "global" : scope.trim();
-        try (PreparedStatement ps = connection.prepareStatement("""
-                SELECT id, scope, subject, content, source, created_at, updated_at, hits, active
-                FROM memories
-                WHERE active = 1 AND (scope = ? OR scope = 'global')
-                ORDER BY hits DESC, updated_at DESC
-                LIMIT ?""")) {
-            ps.setString(1, s);
-            ps.setInt(2, limit);
+        List<String> clean = new ArrayList<>();
+        if (scopes != null) {
+            for (String s : scopes) {
+                String v = s == null ? "" : s.trim();
+                if (!v.isEmpty() && !clean.contains(v)) {
+                    clean.add(v);
+                }
+            }
+        }
+        if (clean.isEmpty()) {
+            return List.of();
+        }
+        StringBuilder in = new StringBuilder();
+        for (int i = 0; i < clean.size(); i++) {
+            in.append(i == 0 ? "?" : ", ?");
+        }
+        String sql = "SELECT id, scope, subject, content, source, created_at, updated_at, hits, active "
+                + "FROM memories WHERE active = 1 AND scope IN (" + in + ") "
+                + "ORDER BY hits DESC, updated_at DESC LIMIT ?";
+        try (PreparedStatement ps = connection.prepareStatement(sql)) {
+            int i = 1;
+            for (String s : clean) {
+                ps.setString(i++, s);
+            }
+            ps.setInt(i, limit);
             return readAll(ps);
         } catch (SQLException e) {
             log.warn("读取记忆失败: {}", Log.rootMessage(e));
             return List.of();
         }
+    }
+
+    /** 单个作用域（自动带上 global）的便捷重载。 */
+    public synchronized List<Memory> forInjection(String scope, int limit) {
+        String s = scope == null || scope.isBlank() ? "global" : scope.trim();
+        return forInjection(List.of(s, "global"), limit);
+    }
+
+    // ---------------------------------------------------------------- 人物画像
+
+    /** 取一个人的画像；没有就返回 null。 */
+    public synchronized Profile profile(String qq) {
+        if (!available || qq == null || qq.isBlank()) {
+            return null;
+        }
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT qq, name, affection, spouse, note, first_seen, last_seen, messages "
+                        + "FROM profiles WHERE qq = ?")) {
+            ps.setString(1, qq.trim());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? readProfile(rs) : null;
+            }
+        } catch (SQLException e) {
+            log.warn("读取画像失败: {}", Log.rootMessage(e));
+            return null;
+        }
+    }
+
+    /**
+     * 有人说话时调用：没有画像就建一个，有就更新昵称、末次时间与消息数。
+     *
+     * <p>昵称只在非空时覆盖 —— 群名片时有时无，别把已经记下的名字抹成空白。
+     */
+    public synchronized Profile touchProfile(String qq, String name) {
+        if (!available || qq == null || qq.isBlank()) {
+            return null;
+        }
+        String id = qq.trim();
+        String nick = name == null ? "" : name.trim();
+        long now = System.currentTimeMillis();
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT INTO profiles(qq, name, affection, spouse, note, first_seen, last_seen, messages)
+                VALUES(?, ?, 0, 0, '', ?, ?, 1)
+                ON CONFLICT(qq) DO UPDATE SET
+                  name = CASE WHEN excluded.name = '' THEN profiles.name ELSE excluded.name END,
+                  last_seen = excluded.last_seen,
+                  messages = profiles.messages + 1""")) {
+            ps.setString(1, id);
+            ps.setString(2, nick);
+            ps.setLong(3, now);
+            ps.setLong(4, now);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            log.warn("更新画像失败: {}", Log.rootMessage(e));
+        }
+        return profile(id);
+    }
+
+    /** 控制台保存画像（称呼 / 好感度 / 婚姻 / 描述）。不存在就建。 */
+    public synchronized boolean saveProfile(String qq, String name, int affection,
+                                           boolean spouse, String note) {
+        if (!available || qq == null || qq.isBlank()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        try (PreparedStatement ps = connection.prepareStatement("""
+                INSERT INTO profiles(qq, name, affection, spouse, note, first_seen, last_seen, messages)
+                VALUES(?, ?, ?, ?, ?, ?, ?, 0)
+                ON CONFLICT(qq) DO UPDATE SET
+                  name = excluded.name,
+                  affection = excluded.affection,
+                  spouse = excluded.spouse,
+                  note = excluded.note""")) {
+            ps.setString(1, qq.trim());
+            ps.setString(2, name == null ? "" : name.trim());
+            ps.setInt(3, Math.max(0, Math.min(100, affection)));
+            ps.setInt(4, spouse ? 1 : 0);
+            ps.setString(5, note == null ? "" : note.trim());
+            ps.setLong(6, now);
+            ps.setLong(7, now);
+            ps.executeUpdate();
+            return true;
+        } catch (SQLException e) {
+            log.warn("保存画像失败: {}", Log.rootMessage(e));
+            return false;
+        }
+    }
+
+    public synchronized boolean deleteProfile(String qq) {
+        if (!available || qq == null || qq.isBlank()) {
+            return false;
+        }
+        try (PreparedStatement ps = connection.prepareStatement("DELETE FROM profiles WHERE qq = ?")) {
+            ps.setString(1, qq.trim());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            log.warn("删除画像失败: {}", Log.rootMessage(e));
+            return false;
+        }
+    }
+
+    /** 列出画像：配偶优先，其次好感度、最近说话时间。 */
+    public synchronized List<Profile> listProfiles(int limit) {
+        if (!available) {
+            return List.of();
+        }
+        List<Profile> out = new ArrayList<>();
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT qq, name, affection, spouse, note, first_seen, last_seen, messages "
+                        + "FROM profiles ORDER BY spouse DESC, affection DESC, last_seen DESC LIMIT ?")) {
+            ps.setInt(1, limit <= 0 ? 500 : Math.min(limit, 5000));
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    out.add(readProfile(rs));
+                }
+            }
+        } catch (SQLException e) {
+            log.warn("列出画像失败: {}", Log.rootMessage(e));
+        }
+        return out;
+    }
+
+    private static Profile readProfile(ResultSet rs) throws SQLException {
+        return new Profile(
+                rs.getString("qq"),
+                rs.getString("name"),
+                rs.getInt("affection"),
+                rs.getInt("spouse") == 1,
+                rs.getString("note"),
+                rs.getLong("first_seen"),
+                rs.getLong("last_seen"),
+                rs.getInt("messages"));
     }
 
     /** 列出记忆。scope 为空表示不过滤；query 为空表示不按内容过滤。 */

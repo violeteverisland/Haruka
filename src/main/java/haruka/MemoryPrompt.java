@@ -24,14 +24,16 @@ final class MemoryPrompt {
     }
 
     /**
-     * 取该会话（含全局）相关记忆并拼成提示。顺带累加命中次数，让常被用到的记忆排前面。
+     * 取相关记忆并拼成提示。顺带累加命中次数，让常被用到的记忆排前面。
+     *
+     * @param scopes 一次对话涉及的作用域，例如「这个人」+「这个群」+「全局」。
+     *               记忆按人存（{@code person:&lt;qq&gt;}），所以群里不会再张冠李戴。
      */
-    static Block build(Config cfg, MemoryStore store, String scope) {
+    static Block build(Config cfg, MemoryStore store, List<String> scopes) {
         if (store == null || !store.available() || cfg.memoryInjectLimit <= 0) {
             return Block.EMPTY;
         }
-        String key = scope == null || scope.isBlank() ? "global" : scope.trim();
-        List<MemoryStore.Memory> items = store.forInjection(key, cfg.memoryInjectLimit);
+        List<MemoryStore.Memory> items = store.forInjection(scopes, cfg.memoryInjectLimit);
         if (items.isEmpty()) {
             return Block.EMPTY;
         }

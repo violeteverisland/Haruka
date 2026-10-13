@@ -60,9 +60,6 @@ public final class ChatService {
     /** 取合并转发正文的能力，由 OneBotServer 在构造完之后注入。 */
     private volatile Function<String, String> forwardResolver;
 
-    /** 上一次看到的配偶 QQ，用来只在配置变化时补写结婚记忆。 */
-    private volatile String lastSpouse = "";
-
     /** 每个会话最近一次"先转发过来、还没被问到"的聊天记录。 */
     private final ConcurrentHashMap<String, CachedForward> recentForwards = new ConcurrentHashMap<>();
     /** 存下的转发记录多久之内还算数。 */
@@ -125,17 +122,22 @@ public final class ChatService {
                     // 在读线程里调 api.call 会等一个永远回不来的响应，直接死锁。
                     String text = withForwards(sessionKey, userText, forwardIds);
 
-                    // 群聊里她原本只拿到一串裸文本，连谁在说话都不知道。
-                    // 主人的消息带个前缀，她才知道这是该听的人。
-                    text = Owner.mark(cfg, userId, text);
+                    // 画像：她该知道谁是谁。第一次说话就建一条，之后每次更新末次时间与消息数。
+                    MemoryStore.Profile speaker = memory == null ? null : memory.touchProfile(userId, sender);
+                    // 结婚要写进长期记忆。只在对方是配偶时才真的查库，而且是幂等的。
+                    if (Relation.ensureMarriageMemory(speaker, memory)) {
+                        log.info("[关系] 结婚已写入长期记忆（QQ {}）", speaker.qq());
+                    }
 
-                    // 结婚要写进长期记忆。配置没变就早退，所以这句每轮跑也不花钱。
-                    recordMarriageIfNeeded();
+                    // 群聊里她原本只拿到一串裸文本，连谁在说话都不知道。
+                    // 主人的消息带个前缀 —— 现在这只是为了让历史读起来顺，
+                    // 身份判断以系统提示里那段为准。
+                    text = Owner.mark(cfg, userId, text);
 
                     // 对方提到头像/长相时，先把头像抓下来附上 —— 她这才算真的"看得见"。
                     List<Path> attachments = attachmentsFor(userId, sender, text);
                     String reply = llm.chat(new ArrayList<>(h), text,
-                            systemPrompt(sessionKey, userId, !attachments.isEmpty()), attachments);
+                            systemPrompt(sessionKey, userId, speaker, !attachments.isEmpty()), attachments);
 
                     List<DrawRequest> draws = new ArrayList<>();
                     String visible = extractDraws(reply, cfg.imageMaxPerTurn, draws);
@@ -162,7 +164,9 @@ public final class ChatService {
                     }
 
                     if (extractor != null) {
-                        extractor.submit(sessionKey, sender, text, reply);
+                        // 抽出来的事按「人」归档，不按会话 —— 换到别的群、换到私聊，她都还认得。
+                        // memoryScopes 的第一项就是 person:<qq>（userId 为空时才回落到会话）。
+                        extractor.submit(memoryScopes(sessionKey, userId).get(0), sender, text, reply);
                     }
                 } catch (Throwable t) {
                     status.failure(t.toString());
@@ -269,44 +273,41 @@ public final class ChatService {
     }
 
     /**
-     * 配偶配置一变就把"结婚"写进长期记忆。
+     * 一次对话要看的记忆作用域。
      *
-     * <p>每轮都会调用，但配置没变时立刻返回 —— 不查库、没有开销。记忆内容是固定句子，
-     * 靠记忆库的内容指纹去重，所以反复调用也只会真正写进去一次。
+     * <p>记忆按**人**存（{@code person:&lt;qq&gt;}），所以群里各人的事不会串。
+     * 群作用域（{@code group:&lt;gid&gt;}）留给"关于这个群"的事；私聊的老作用域
+     * （{@code private:&lt;qq&gt;}）也一并带上 —— 万一迁移没跑完，旧记忆也还能用上。
      */
-    private void recordMarriageIfNeeded() {
-        String spouse = cfg.spouseQq == null ? "" : cfg.spouseQq.trim();
-        if (spouse.equals(lastSpouse)) {
-            return;
+    private static List<String> memoryScopes(String sessionKey, String userId) {
+        List<String> scopes = new ArrayList<>();
+        if (userId != null && !userId.isBlank()) {
+            scopes.add("person:" + userId.trim());
         }
-        lastSpouse = spouse;
-        if (spouse.isEmpty()) {
-            // 只解除"配偶"这个代码状态；已经写进记忆的那条不自动删 ——
-            // 记忆归她，要删请在控制台「记忆」页删。
-            log.info("[关系] 配偶已清空（审查恢复对所有人生效；已写入的结婚记忆保留）");
-            return;
+        if (sessionKey != null && !sessionKey.isBlank()) {
+            scopes.add(sessionKey.trim());
         }
-        if (Relation.ensureMarriageMemory(cfg, memory)) {
-            log.info("[关系] 结婚已写入长期记忆（配偶 QQ {}）", spouse);
-        }
+        scopes.add("global");
+        return scopes;
     }
 
     /**
      * 拼出这一轮的系统提示：输出纪律 → 身份 → 发言尺度 → 心意 → 头像 → 记忆 → 画图能力。
      * 顺序有意义：先立规矩和"这是谁"，再是"我手上有什么"和"我知道什么"。
      */
-    private String systemPrompt(String sessionKey, String userId, boolean withAvatar) {
+    private String systemPrompt(String sessionKey, String userId, MemoryStore.Profile speaker,
+                                boolean withAvatar) {
         StringBuilder extra = new StringBuilder();
         // 代码自己追加的护栏，不写进用户的人设文件。
         // 见过一次模型把内部推理直接当回复发出来（还是英文的 "The user's request references…"），
         // 这一句拦掉那一类输出。
         extra.append("【输出纪律】回复里只写你要对对方说的话本身。"
                 + "不要把思考过程、分析、推理或括号里的自我说明写进回复。");
-        // 身份与发言尺度都由代码给（权威），不靠消息正文里说了什么。
+        // 身份、发言尺度、心意都由代码给（权威），不靠消息正文里说了什么。
         for (String block : new String[] {
-                Owner.identity(cfg, userId),
-                Relation.safetyBlock(cfg, userId),
-                Relation.confessionHint(cfg, userId) }) {
+                People.block(cfg, speaker, userId),
+                Relation.safetyBlock(cfg, speaker),
+                Relation.confessionHint(cfg, speaker) }) {
             if (!block.isEmpty()) {
                 extra.append('\n').append(block);
             }
@@ -316,7 +317,7 @@ public final class ChatService {
                     .append("【你看到的】这次附上了发送者**当前**的头像图片，就在这条消息里。")
                     .append("你可以直接看着它说话；不要说你看不到头像，也不要凭想象编造长相。");
         }
-        String memoryBlock = MemoryPrompt.build(cfg, memory, sessionKey).text();
+        String memoryBlock = MemoryPrompt.build(cfg, memory, memoryScopes(sessionKey, userId)).text();
         if (!memoryBlock.isEmpty()) {
             if (extra.length() > 0) {
                 extra.append('\n');

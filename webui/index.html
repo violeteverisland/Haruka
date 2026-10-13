@@ -695,16 +695,16 @@ select:focus { border-color: var(--accent); }
 .mem-toolbar select { max-width: 200px; }
 .mem-search { flex: 1; min-width: 130px; }
 
-.mem-list {
+.mem-list, .people-list {
   max-height: 300px;
   overflow: auto;
   border: 1px solid var(--line-soft);
   border-radius: 6px;
   background: #fcfcfd;
 }
-.mem-list:empty { display: none; }
+.mem-list:empty, .people-list:empty { display: none; }
 
-.mem-row {
+.mem-row, .people-row {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -712,13 +712,14 @@ select:focus { border-color: var(--accent); }
   border-bottom: 1px solid var(--line-soft);
   font-size: 12.5px;
 }
-.mem-row:last-child { border-bottom: none; }
-.mem-row:hover { background: #fff; }
+.mem-row:last-child, .people-row:last-child { border-bottom: none; }
+.mem-row:hover, .people-row:hover { background: #fff; }
+.people-row.active { background: var(--accent-soft); }
 
-.mem-main { flex: 1; min-width: 0; }
+.mem-main, .people-main { flex: 1; min-width: 0; }
 .mem-content { white-space: pre-wrap; word-break: break-word; }
 
-.mem-meta {
+.mem-meta, .people-meta {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -728,18 +729,18 @@ select:focus { border-color: var(--accent); }
   font-size: 11px;
   color: var(--muted);
 }
-.mem-meta .badge { font-size: 10px; }
+.mem-meta .badge, .people-meta .badge { font-size: 10px; }
 
-.mem-actions {
+.mem-actions, .people-actions {
   flex: none;
   display: flex;
   align-items: center;
   gap: 4px;
   font-family: var(--sans);
 }
-.mem-actions .hint { margin: 0; white-space: nowrap; }
+.mem-actions .hint, .people-actions .hint { margin: 0; white-space: nowrap; }
 
-.mem-empty {
+.mem-empty, .people-empty {
   padding: 16px 12px;
   text-align: center;
   font-size: 12px;
@@ -762,6 +763,55 @@ select:focus { border-color: var(--accent); }
 }
 
 .badge-scope { background: #f2f4f5; border-color: var(--line); color: var(--text-2); font-family: var(--mono); }
+
+/* ---------------- 人物画像 ---------------- */
+
+.people-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.people-affection {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.people-affection input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 18px;
+  accent-color: var(--accent);
+}
+.people-affection input[type="number"] { flex: none; width: 78px; }
+
+.people-title {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.people-title .badge { font-size: 10px; font-weight: 500; }
+
+.people-note {
+  margin-top: 4px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.people-form-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 10px;
+}
 .badge-auto { background: var(--accent-soft); border-color: var(--accent-line); color: var(--accent); }
 .badge-console { background: var(--info-soft); border-color: #bae6fd; color: var(--info); }
 .badge-import { background: #f5f3ff; border-color: #ddd6fe; color: #6d28d9; }
@@ -1248,6 +1298,10 @@ select:focus { border-color: var(--accent); }
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M5 20a7 7 0 0 1 14 0"/></svg>
           <span class="nav-text">人设</span>
         </button>
+        <button class="nav-item" type="button" data-panel="people">
+          <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.2"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16.5 5.6a3.2 3.2 0 0 1 0 6.3M18 20a6.6 6.6 0 0 0-2-4.7"/></svg>
+          <span class="nav-text">人物</span>
+        </button>
         <button class="nav-item" type="button" data-panel="behavior">
           <svg class="nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="7.5" width="20" height="9" rx="4.5"/><circle cx="16.5" cy="12" r="2.6"/></svg>
           <span class="nav-text">行为</span>
@@ -1547,6 +1601,73 @@ select:focus { border-color: var(--accent); }
 
       </section>
 
+      <section class="panel" data-panel="people">
+      <!-- 人物画像 -->
+      <section class="card">
+        <h2 class="card-title">人物</h2>
+
+        <div class="people-toolbar">
+          <button class="btn btn-primary btn-slim" id="peopleNewBtn" type="button">新建人物</button>
+          <button class="btn btn-slim" id="peopleRefreshBtn" type="button">刷新</button>
+          <span class="hint" id="peopleStatus" style="margin:0"></span>
+        </div>
+
+        <div class="hint" style="margin-top:0">
+          有人跟她说话就会自动建档。删除画像<strong>不会</strong>删掉她的长期记忆 —— 记忆要去「记忆」页删。
+        </div>
+
+        <div class="people-list" id="peopleList"></div>
+
+        <div class="people-form hidden" id="peopleForm">
+          <div class="people-form-title" id="peopleFormTitle">编辑人物</div>
+
+          <div class="grid2">
+            <div class="field">
+              <label class="field-label" for="peopleQq">QQ 号</label>
+              <input type="text" id="peopleQq" class="mono" inputmode="numeric" spellcheck="false" placeholder="1907257915">
+              <div class="hint">编辑已有画像时不可改（它是主键）。</div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="peopleName">name</label>
+              <input type="text" id="peopleName" spellcheck="false" placeholder="阿喵">
+              <div class="hint">留空则列表里显示 QQ 号。</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="peopleAffection">
+              affection（好感度）
+              <span class="badge badge-scope" id="peopleBand">—</span>
+            </label>
+            <div class="people-affection">
+              <input type="range" id="peopleAffection" min="0" max="100" step="1">
+              <input type="number" id="peopleAffectionNum" min="0" max="100" step="1">
+            </div>
+            <div class="hint">档位（生疏 / 熟悉 / 亲近 / 暧昧 / 恋人）由后端算，这里只显示，不在前端重算。</div>
+          </div>
+
+          <div class="switch-row">
+            <div>
+              <div class="switch-label">spouse</div>
+              <div class="hint" style="margin-top:0">填上 = 已结婚：会写进长期记忆，并解除「发言审查」—— 这是解除审查的唯一开关。</div>
+            </div>
+            <label class="switch"><input type="checkbox" id="peopleSpouse"><span class="track"></span></label>
+          </div>
+
+          <div class="field" style="margin-top:12px">
+            <label class="field-label" for="peopleNote">note</label>
+            <textarea id="peopleNote" rows="3" spellcheck="false" placeholder="程序员，喝冰美式"></textarea>
+          </div>
+
+          <div class="row-inline">
+            <button class="btn btn-primary btn-slim" id="peopleSaveBtn" type="button">保存</button>
+            <button class="btn btn-slim" id="peopleCancelBtn" type="button">取消</button>
+            <span class="hint" id="peopleFormHint" style="margin:0"></span>
+          </div>
+        </div>
+      </section>
+      </section><!-- /panel: people -->
+
       <section class="panel" data-panel="behavior">
       <!-- 机器人行为 -->
       <section class="card">
@@ -1591,27 +1712,12 @@ select:focus { border-color: var(--accent); }
           <input type="number" id="cfgWorkers" min="1" step="1">
         </div>
 
-        <div class="sub-title">关系与审查</div>
-
-        <div class="field">
-          <label class="field-label" for="cfgAffection">affection</label>
-          <input type="number" id="cfgAffection" min="0" max="100" step="1">
-          <div class="hint">好感度。到 100 她会向你表白。目前只支持手动改，不会从聊天里增长。</div>
-        </div>
-
-        <div class="field">
-          <label class="field-label" for="cfgSpouseQq">spouse_qq</label>
-          <input type="text" id="cfgSpouseQq" class="mono" inputmode="numeric" placeholder="留空 = 未结婚" spellcheck="false">
-          <div class="hint">
-            配偶的 QQ 号。<strong>填上 = 已结婚</strong>：会写进长期记忆，并解除下面那条审查。
-            这是解除审查的<strong>唯一</strong>开关 —— 由代码按 QQ 号判断，不靠提示词，所以骗不过去。
-          </div>
-        </div>
+        <div class="sub-title">发言审查</div>
 
         <div class="switch-row">
           <div>
             <div class="switch-label">moderation_enabled</div>
-            <div class="hint" style="margin-top:0">普通聊天的发言审查。<strong>对所有人默认生效，主人也不例外</strong>，唯一的例外是上面登记的配偶。</div>
+            <div class="hint" style="margin-top:0">普通聊天的发言审查。<strong>对所有人默认生效，主人也不例外</strong>，唯一的例外是在「人物」页里登记为配偶的人。</div>
           </div>
           <label class="switch"><input type="checkbox" id="cfgModerationEnabled"><span class="track"></span></label>
         </div>
@@ -2060,7 +2166,7 @@ select:focus { border-color: var(--accent); }
   var STORAGE_PANEL = 'haruka.panel';
 
   // 左侧分区（顺序即导航顺序）
-  var NAV_PANELS = ['overview', 'connect', 'model', 'persona', 'behavior', 'ability', 'memory', 'console'];
+  var NAV_PANELS = ['overview', 'connect', 'model', 'persona', 'people', 'behavior', 'ability', 'memory', 'console'];
 
   // 从 http(s) 打开时默认连当前源；从本地文件打开时默认连本机控制台端口
   var DEFAULT_BACKEND = (location.protocol === 'http:' || location.protocol === 'https:')
@@ -2161,6 +2267,292 @@ select:focus { border-color: var(--accent); }
     } catch (e) {
       // 存不下也不影响本次会话，只是下次要重新填
     }
+  }
+
+  /* ============================================================
+     人物画像
+     ============================================================ */
+
+  /** 列表里显示的名字：name 为空就退回 QQ 号 */
+  function profileLabel(p) {
+    return (p && p.name) ? String(p.name) : String((p && p.qq) || '');
+  }
+
+  function renderPeopleStatus(text) {
+    var box = $('peopleStatus');
+    box.textContent = text || '';
+  }
+
+  function renderPeopleList() {
+    var box = $('peopleList');
+    box.innerHTML = '';
+
+    var list = state.people.list;
+    if (!list.length) {
+      var empty = document.createElement('div');
+      empty.className = 'people-empty';
+      empty.textContent = '还没有任何画像。有人跟她说话就会自动建档。';
+      box.appendChild(empty);
+      return;
+    }
+
+    var frag = document.createDocumentFragment();
+    for (var i = 0; i < list.length; i++) {
+      frag.appendChild(buildPeopleRow(list[i]));
+    }
+    box.appendChild(frag);
+  }
+
+  function buildPeopleRow(p) {
+    var row = document.createElement('div');
+    row.className = 'people-row';
+    if (state.people.editing && String(state.people.editing.qq) === String(p.qq)) {
+      row.classList.add('active');
+    }
+
+    var main = document.createElement('div');
+    main.className = 'people-main';
+
+    var title = document.createElement('div');
+    title.className = 'people-title';
+
+    var name = document.createElement('span');
+    name.textContent = profileLabel(p);
+    title.appendChild(name);
+
+    if (p.qq) {
+      var qq = document.createElement('span');
+      qq.className = 'badge badge-scope';
+      qq.textContent = String(p.qq);
+      title.appendChild(qq);
+    }
+    if (p.spouse) {
+      var spouse = document.createElement('span');
+      spouse.className = 'badge badge-auto';
+      spouse.textContent = '配偶';
+      title.appendChild(spouse);
+    }
+    main.appendChild(title);
+
+    var meta = document.createElement('div');
+    meta.className = 'people-meta';
+
+    var affection = document.createElement('span');
+    // band 是后端算好的档位，直接用，不在前端重算
+    affection.textContent = '好感度 ' + formatNumber(p.affection || 0)
+      + (p.band ? ' · ' + p.band : '');
+    meta.appendChild(affection);
+
+    var messages = document.createElement('span');
+    messages.textContent = '消息 ' + formatNumber(p.messages || 0);
+    meta.appendChild(messages);
+
+    var seen = document.createElement('span');
+    seen.textContent = p.lastSeen ? formatRelative(p.lastSeen) : '还没说过话';
+    seen.title = p.lastSeen ? ('最后说话 ' + formatTime(p.lastSeen)) : '';
+    meta.appendChild(seen);
+
+    main.appendChild(meta);
+
+    if (p.note) {
+      var note = document.createElement('div');
+      note.className = 'people-note';
+      note.textContent = String(p.note);
+      main.appendChild(note);
+    }
+
+    row.appendChild(main);
+
+    var actions = document.createElement('div');
+    actions.className = 'people-actions';
+
+    var edit = document.createElement('button');
+    edit.type = 'button';
+    edit.className = 'btn btn-xs';
+    edit.textContent = '编辑';
+    edit.addEventListener('click', function () { openPeopleForm(p); });
+    actions.appendChild(edit);
+
+    var del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'btn btn-xs';
+    del.textContent = '删除';
+    del.addEventListener('click', function () { askDeleteProfile(p); });
+    actions.appendChild(del);
+
+    row.appendChild(actions);
+    return row;
+  }
+
+  function loadProfiles() {
+    $('peopleList').innerHTML = '<div class="people-empty">正在读取人物画像…</div>';
+
+    return api('/api/profiles')
+      .then(function (res) {
+        var d = res.data || {};
+        state.people.list = Array.isArray(d.profiles) ? d.profiles : [];
+        state.people.loaded = true;
+        renderPeopleStatus('共 ' + formatNumber(d.total === undefined ? state.people.list.length : d.total) + ' 个画像');
+        renderPeopleList();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        renderPeopleStatus('');
+        var box = $('peopleList');
+        box.innerHTML = '';
+        var wrap = document.createElement('div');
+        wrap.className = 'error-box';
+        var title = document.createElement('div');
+        title.className = 'error-box-title';
+        title.textContent = '读取人物画像失败';
+        var body = document.createElement('div');
+        body.className = 'error-box-body';
+        body.textContent = String(err.message || '未知错误');
+        wrap.appendChild(title);
+        wrap.appendChild(body);
+        box.appendChild(wrap);
+      });
+  }
+
+  /* ---------------- 好感度：滑块与数字框双向同步 ---------------- */
+
+  function setPeopleAffection(value) {
+    var v = toInt(value);
+    if (v < 0) { v = 0; }
+    if (v > 100) { v = 100; }
+    $('peopleAffection').value = v;
+    $('peopleAffectionNum').value = v;
+  }
+
+  /* ---------------- 新增 / 编辑 ---------------- */
+
+  function openPeopleForm(p) {
+    state.people.editing = p || null;
+    state.people.isNew = !p;
+
+    $('peopleFormTitle').textContent = p
+      ? ('编辑人物 · ' + profileLabel(p))
+      : '新建人物（手动填 QQ 号）';
+    $('peopleQq').value = p ? String(p.qq || '') : '';
+    $('peopleQq').readOnly = !!p;      // 已有画像的主键不给改，避免存出一条重复档
+    $('peopleName').value = p ? (p.name || '') : '';
+    setPeopleAffection(p ? (p.affection || 0) : 0);
+    $('peopleBand').textContent = (p && p.band) ? String(p.band) : '—';
+    $('peopleSpouse').checked = !!(p && p.spouse);
+    $('peopleNote').value = p ? (p.note || '') : '';
+    $('peopleFormHint').textContent = '';
+    $('peopleForm').classList.remove('hidden');
+
+    renderPeopleList();   // 让被编辑的那一行高亮
+    try { $('peopleName').focus(); } catch (e) { /* 忽略 */ }
+  }
+
+  function closePeopleForm() {
+    state.people.editing = null;
+    state.people.isNew = false;
+    $('peopleForm').classList.add('hidden');
+    $('peopleFormHint').textContent = '';
+    $('peopleQq').readOnly = false;
+    $('peopleBand').textContent = '—';
+    renderPeopleList();
+  }
+
+  function saveProfile() {
+    var qq = $('peopleQq').value.trim();
+    var affectionRaw = $('peopleAffectionNum').value.trim();
+
+    if (!qq) { $('peopleFormHint').textContent = 'QQ 号不能为空'; return; }
+    if (!/^\d+$/.test(qq)) { $('peopleFormHint').textContent = 'QQ 号只能是数字'; return; }
+    if (affectionRaw === '' || !/^\d+$/.test(affectionRaw) || Number(affectionRaw) > 100) {
+      $('peopleFormHint').textContent = 'affection 必须是 0 ~ 100 的整数';
+      return;
+    }
+
+    var btn = $('peopleSaveBtn');
+    btn.disabled = true;
+    btn.textContent = '保存中…';
+    $('peopleFormHint').textContent = '';
+
+    api('/api/profiles/save', {
+      method: 'POST',
+      body: {
+        qq: qq,
+        name: $('peopleName').value.trim(),
+        affection: Number(affectionRaw),
+        spouse: $('peopleSpouse').checked,
+        note: $('peopleNote').value
+      }
+    })
+      .then(function (res) {
+        var d = res.data || {};
+        toast('ok', '已保存 ' + profileLabel(d.profile || { qq: qq, name: $('peopleName').value.trim() }));
+        closePeopleForm();
+        return loadProfiles();
+      })
+      .catch(function (err) {
+        if (err.status === 401) { return; }
+        $('peopleFormHint').textContent = err.message;
+      })
+      .then(function () {
+        btn.disabled = false;
+        btn.textContent = '保存';
+      });
+  }
+
+  function askDeleteProfile(p) {
+    var sure = window.confirm('确定删除「' + profileLabel(p) + '」的画像？\n\n'
+      + '画像删了，记忆还在 —— 记忆要去「记忆」页删。');
+    if (!sure) { return; }
+
+    api('/api/profiles/delete', { method: 'POST', body: { qq: String(p.qq || '') } })
+      .then(function (res) {
+        var d = res.data || {};
+        if (d.deleted === false) { toast('warn', '后端没有删除任何记录'); }
+        else { toast('ok', '已删除画像'); }
+        if (state.people.editing && String(state.people.editing.qq) === String(p.qq)) {
+          closePeopleForm();
+        }
+        return loadProfiles();
+      })
+      .catch(function (err) {
+        if (err.status !== 401) { toast('err', '删除失败：' + err.message); }
+      });
+  }
+
+  function resetPeoplePanel() {
+    state.people.loaded = false;
+    state.people.list = [];
+    state.people.editing = null;
+    state.people.isNew = false;
+    $('peopleForm').classList.add('hidden');
+    $('peopleFormHint').textContent = '';
+    $('peopleQq').readOnly = false;
+    $('peopleBand').textContent = '—';
+    renderPeopleStatus('');
+    $('peopleList').innerHTML = '<div class="people-empty">正在读取人物画像…</div>';
+  }
+
+  function bindPeople() {
+    $('peopleNewBtn').addEventListener('click', function () { openPeopleForm(null); });
+    $('peopleRefreshBtn').addEventListener('click', function () { loadProfiles(); });
+    $('peopleSaveBtn').addEventListener('click', saveProfile);
+    $('peopleCancelBtn').addEventListener('click', closePeopleForm);
+
+    // 滑块 -> 数字框
+    $('peopleAffection').addEventListener('input', function () {
+      $('peopleAffectionNum').value = this.value;
+    });
+    // 数字框 -> 滑块（输入过程中不强行改写用户正在敲的内容）
+    $('peopleAffectionNum').addEventListener('input', function () {
+      var raw = this.value.trim();
+      if (!/^\d+$/.test(raw)) { return; }
+      var v = Number(raw);
+      if (v >= 0 && v <= 100) { $('peopleAffection').value = v; }
+    });
+    // 失焦 / 回车时收敛到 0–100，并把两个控件对齐
+    $('peopleAffectionNum').addEventListener('change', function () {
+      setPeopleAffection(this.value);
+    });
   }
 
   /* ============================================================
@@ -2304,6 +2696,8 @@ select:focus { border-color: var(--accent); }
     persona: { loaded: false, savedText: '', configuredPath: '', resolvedPath: '', exists: false, mtime: 0 },
     // 连接 QQ 卡片
     qq: { url: '', urls: [], token: '', tokenSet: false, showToken: false },
+    // 人物画像
+    people: { loaded: false, list: [], editing: null, isNew: false },
     // 左侧导航当前分区
     panel: 'overview'
   };
@@ -2382,6 +2776,7 @@ select:focus { border-color: var(--accent); }
     resetMemoryPanel();
     resetPersonaPanel();
     resetConnectQq();
+    resetPeoplePanel();
 
     startStatusPolling(initialStatus);
     loadConfig();
@@ -2389,6 +2784,7 @@ select:focus { border-color: var(--accent); }
     startLogs();
     loadMemories();
     loadPersona();
+    loadProfiles();
   }
 
   function tryConnect() {
@@ -2758,9 +3154,7 @@ select:focus { border-color: var(--accent); }
     var owners = Array.isArray(bot.owner_qq) ? bot.owner_qq : [];
     $('cfgOwnerQq').value = owners.join(', ');
     $('cfgOwnerTitle').value = bot.owner_title || '主人';
-    // 关系与审查
-    $('cfgAffection').value = bot.affection === undefined ? '' : bot.affection;
-    $('cfgSpouseQq').value = bot.spouse_qq || '';
+    // 发言审查（好感度 / 配偶已搬到「人物」页，按 QQ 建档）
     // 默认是「开」：后端没给这个字段时按开启处理，宁可多审不可漏审
     $('cfgModerationEnabled').checked = bot.moderation_enabled !== false;
     // 多行审查文案原样灌入，不做 trim（内部换行要保留）
@@ -2865,8 +3259,6 @@ select:focus { border-color: var(--accent); }
         wake_words: parseWakeWords($('cfgTriggerNames').value),
         owner_qq: parseWakeWords($('cfgOwnerQq').value),
         owner_title: $('cfgOwnerTitle').value.trim() || '主人',
-        affection: toInt($('cfgAffection').value),
-        spouse_qq: $('cfgSpouseQq').value.trim(),
         moderation_enabled: $('cfgModerationEnabled').checked,
         // 多行文案原样回传：不 trim，内部换行与中文标点都要保留
         moderation_prompt: $('cfgModerationPrompt').value,
@@ -2974,12 +3366,6 @@ select:focus { border-color: var(--accent); }
     // bot 主动接话
     checkInt('cfgProactiveCooldown', 'bot.proactive_cooldown_seconds', 0, 3600);
     checkInt('cfgProactiveMaxPerHour', 'bot.proactive_max_per_hour', 1, 120);
-    // bot 关系与审查
-    checkInt('cfgAffection', 'bot.affection', 0, 100);
-    var spouseRaw = $('cfgSpouseQq').value.trim();
-    if (spouseRaw !== '' && !/^\d+$/.test(spouseRaw)) {
-      bad('cfgSpouseQq', 'bot.spouse_qq 只能是 QQ 号（纯数字）');
-    }
     // avatar
     checkInt('cfgAvatarSize', 'avatar.size', 40, 640);
     checkInt('cfgAvatarCacheMinutes', 'avatar.cache_minutes', 0, 10080);
@@ -4613,6 +4999,7 @@ select:focus { border-color: var(--accent); }
     bindMemory();
     bindPersona();
     bindConnectQq();
+    bindPeople();
     bindNav();
 
     var saved = loadConnection();

@@ -173,10 +173,18 @@ public final class Main {
         if (memory != null) {
             log.info("长期记忆: {}（自动抽取={}，每次注入上限={} 条）",
                     memory.path(), cfg.memoryExtractEnabled, cfg.memoryInjectLimit);
-            // 启动时补写一次"结婚"：这样即使她还没收到任何消息，这条也已经在记忆里了。
-            // 记忆库按内容指纹去重，所以重启多少次都只会有一条。
-            if (Relation.ensureMarriageMemory(cfg, memory)) {
-                log.info("[关系] 结婚已写入长期记忆（配偶 QQ {}）", cfg.spouseQq.trim());
+            // 一次性迁移：老配置里的 bot.affection / bot.spouse_qq 搬进画像（幂等，有画像就不动）。
+            seedLegacyRelation(cfg, memory, store);
+            // 启动时把画像里所有配偶的"结婚"补进记忆（幂等：写过的不会再写）。
+            // 这样即使她还没收到任何消息，这条也已经在记忆里了。
+            int seeded = 0;
+            for (MemoryStore.Profile p : memory.listProfiles(0)) {
+                if (Relation.ensureMarriageMemory(p, memory)) {
+                    seeded++;
+                }
+            }
+            if (seeded > 0) {
+                log.info("[关系] 补写了 {} 条结婚记忆", seeded);
             }
         } else if (cfg.memoryEnabled) {
             log.warn("长期记忆不可用（数据库打不开），机器人其余功能不受影响");
@@ -254,6 +262,50 @@ public final class Main {
             }
         }
         return false;
+    }
+
+    /**
+     * 一次性迁移：把老配置里的 {@code bot.affection} / {@code bot.spouse_qq} 搬进画像。
+     *
+     * <p>这两个键已经废弃（配置模板里删掉、控制台不再显示），但已经填过的人不该丢数据 ——
+     * 尤其 {@code spouse_qq}：它代表"不再套用发言审查"，丢了会静默变回被审查。
+     *
+     * <p>只在目标还没有画像时写一次，绝不覆盖已有的画像。
+     */
+    private static void seedLegacyRelation(Config cfg, MemoryStore memory, ConfigStore store) {
+        if (memory == null || !memory.available() || store == null) {
+            return;
+        }
+        java.util.Properties legacy = new java.util.Properties();
+        try (java.io.Reader reader = java.nio.file.Files.newBufferedReader(
+                store.path(), java.nio.charset.StandardCharsets.UTF_8)) {
+            legacy.load(reader);
+        } catch (Exception e) {
+            return;   // 读不到就当没填过
+        }
+        String spouse = legacy.getProperty("bot.spouse_qq", "").trim();
+        String affectionRaw = legacy.getProperty("bot.affection", "").trim();
+        if (spouse.isEmpty() && affectionRaw.isEmpty()) {
+            return;
+        }
+        String owner = cfg.ownerIds.isEmpty() ? "" : cfg.ownerIds.get(0);
+        String target = spouse.isEmpty() ? owner : spouse;
+        if (target.isEmpty()) {
+            log.warn("[关系] 配置里有 bot.affection / bot.spouse_qq，但没有主人可归属，跳过迁移");
+            return;
+        }
+        if (memory.profile(target) != null) {
+            return;   // 画像已经有了，不覆盖
+        }
+        int affection = 0;
+        try {
+            affection = Math.max(0, Math.min(100, Integer.parseInt(affectionRaw)));
+        } catch (Exception ignored) {
+            // 不是数字就当 0
+        }
+        memory.saveProfile(target, "", affection, !spouse.isEmpty(), "");
+        log.info("[关系] 已把老配置搬进画像：QQ {} 好感度 {} 配偶 {} —— 这两个键可以从配置里删掉了",
+                target, affection, !spouse.isEmpty());
     }
 
     /** 第一个不以 -- 开头的参数当配置文件路径。 */

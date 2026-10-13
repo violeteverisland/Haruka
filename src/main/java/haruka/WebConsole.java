@@ -117,6 +117,7 @@ public final class WebConsole {
         log.info("控制接口: /api/meta /api/status /api/config /api/config/raw /api/reload");
         log.info("          /api/models /api/llm-urls /api/test-llm /api/logs/history /api/logs/stream");
         log.info("          /api/memories /api/memories/delete /api/memories/export /api/memories/import");
+        log.info("          /api/profiles /api/profiles/save /api/profiles/delete");
         Path root = staticRoot();
         if (root != null) {
             log.info("静态页面目录: {}（浏览器打开 http://{}:{} 即可）", root, displayHost(cfg.webHost), cfg.webPort);
@@ -181,6 +182,9 @@ public final class WebConsole {
                 case "/api/memories/delete" -> guarded(ex, this::handleMemoryDelete);
                 case "/api/memories/export" -> guarded(ex, this::handleMemoriesExport);
                 case "/api/memories/import" -> guarded(ex, this::handleMemoriesImport);
+                case "/api/profiles" -> guarded(ex, this::handleProfiles);
+                case "/api/profiles/save" -> guarded(ex, this::handleProfileSave);
+                case "/api/profiles/delete" -> guarded(ex, this::handleProfileDelete);
                 case "/api/logs/history" -> guarded(ex, this::handleLogHistory);
                 case "/api/logs/stream" -> guarded(ex, this::handleLogStream);
                 default -> json(ex, 404, err("没有这个接口: " + path));
@@ -483,8 +487,6 @@ public final class WebConsole {
             owners.add(id);
         }
         bot.put("owner_title", cfg.ownerTitle);
-        bot.put("affection", cfg.affection);
-        bot.put("spouse_qq", cfg.spouseQq == null ? "" : cfg.spouseQq);
         bot.put("moderation_enabled", cfg.moderationEnabled);
         bot.put("moderation_prompt", cfg.moderationPrompt == null ? "" : cfg.moderationPrompt);
         bot.put("workers", cfg.workers);
@@ -630,8 +632,6 @@ public final class WebConsole {
                 changes.put("bot.owner_qq", String.join(",", owners));
             }
             putText(changes, "bot.owner_title", bot, "owner_title");
-            putInt(changes, problems, "bot.affection", bot, "affection", 0, 100);
-            putText(changes, "bot.spouse_qq", bot, "spouse_qq");
             if (bot.has("moderation_enabled")) {
                 changes.put("bot.moderation_enabled", String.valueOf(bot.path("moderation_enabled").asBoolean()));
             }
@@ -897,17 +897,25 @@ public final class WebConsole {
 
         long started = System.currentTimeMillis();
         try {
-            MemoryPrompt.Block block = scope.isEmpty()
-                    ? MemoryPrompt.Block.EMPTY
-                    : MemoryPrompt.build(cfg, memory, scope);
+            // 自测也走和应用一样的路径：查画像（只读，不自测也涨消息数），记忆按人+会话取。
+            MemoryStore.Profile speaker = memory == null ? null : memory.profile(senderId);
+            List<String> scopes = new ArrayList<>();
+            if (!senderId.isEmpty()) {
+                scopes.add("person:" + senderId);
+            }
+            if (!scope.isEmpty()) {
+                scopes.add(scope);
+            }
+            scopes.add("global");
+            MemoryPrompt.Block block = MemoryPrompt.build(cfg, memory, scopes);
 
             boolean drawing = wantImage && cfg.imageEnabled;
             // 身份与发言尺度放在记忆前面，和真实聊天链路保持同样的顺序。
             StringBuilder head = new StringBuilder();
             for (String b : new String[] {
-                    Owner.identity(cfg, senderId),
-                    Relation.safetyBlock(cfg, senderId),
-                    Relation.confessionHint(cfg, senderId) }) {
+                    People.block(cfg, speaker, senderId),
+                    Relation.safetyBlock(cfg, speaker),
+                    Relation.confessionHint(cfg, speaker) }) {
                 if (!b.isEmpty()) {
                     if (head.length() > 0) {
                         head.append('\n');
@@ -1348,6 +1356,88 @@ public final class WebConsole {
             default -> null;
         };
         return picked == null ? List.of() : List.of(picked);
+    }
+
+    // ---------------------------------------------------------------- 人物画像
+
+    private void handleProfiles(HttpExchange ex) throws IOException {
+        if (memory == null || !memory.available()) {
+            json(ex, 200, err("记忆库不可用 —— 画像和它存在同一个 .db 里"));
+            return;
+        }
+        ObjectNode data = MAPPER.createObjectNode();
+        ArrayNode array = data.putArray("profiles");
+        for (MemoryStore.Profile p : memory.listProfiles(0)) {
+            array.add(profileNode(p));
+        }
+        data.put("total", array.size());
+        json(ex, 200, ok(data));
+    }
+
+    private void handleProfileSave(HttpExchange ex) throws IOException {
+        if (memory == null || !memory.available()) {
+            json(ex, 200, err("记忆库不可用 —— 画像和它存在同一个 .db 里"));
+            return;
+        }
+        JsonNode body = readJson(ex);
+        String qq = body == null ? "" : body.path("qq").asText("").trim();
+        if (qq.isEmpty()) {
+            json(ex, 200, err("qq 不能为空"));
+            return;
+        }
+        if (!qq.chars().allMatch(Character::isDigit)) {
+            // QQ 号是画像的主键，也是"解除审查"唯一认的东西，填错等于没填。
+            json(ex, 200, err("qq 只能是数字"));
+            return;
+        }
+        int affection = Math.max(0, Math.min(100, body.path("affection").asInt(0)));
+        boolean spouse = body.path("spouse").asBoolean(false);
+        if (!memory.saveProfile(qq, body.path("name").asText(""), affection, spouse,
+                body.path("note").asText(""))) {
+            json(ex, 200, err("保存失败"));
+            return;
+        }
+        MemoryStore.Profile saved = memory.profile(qq);
+        // 婚姻状态写进长期记忆（幂等：写过的不会再写）。
+        if (spouse && Relation.ensureMarriageMemory(saved, memory)) {
+            log.info("[关系] 结婚已写入长期记忆（QQ {}）", qq);
+        }
+        ObjectNode data = MAPPER.createObjectNode();
+        data.set("profile", profileNode(saved));
+        json(ex, 200, ok(data));
+    }
+
+    private void handleProfileDelete(HttpExchange ex) throws IOException {
+        if (memory == null || !memory.available()) {
+            json(ex, 200, err("记忆库不可用 —— 画像和它存在同一个 .db 里"));
+            return;
+        }
+        JsonNode body = readJson(ex);
+        String qq = body == null ? "" : body.path("qq").asText("").trim();
+        if (qq.isEmpty()) {
+            json(ex, 200, err("qq 不能为空"));
+            return;
+        }
+        boolean gone = memory.deleteProfile(qq);
+        // 记忆不跟着删：记忆归她，要删去「记忆」页删。
+        log.info("删除画像: {}（{}）", qq, gone ? "成功" : "本来就不存在");
+        ObjectNode data = MAPPER.createObjectNode();
+        data.put("deleted", gone);
+        json(ex, 200, ok(data));
+    }
+
+    private static ObjectNode profileNode(MemoryStore.Profile p) {
+        ObjectNode node = MAPPER.createObjectNode();
+        node.put("qq", p.qq());
+        node.put("name", p.name());
+        node.put("affection", p.affection());
+        node.put("band", People.band(p.affection()));
+        node.put("spouse", p.spouse());
+        node.put("note", p.note());
+        node.put("firstSeen", p.firstSeen());
+        node.put("lastSeen", p.lastSeen());
+        node.put("messages", p.messages());
+        return node;
     }
 
     // ---------------------------------------------------------------- 长期记忆
